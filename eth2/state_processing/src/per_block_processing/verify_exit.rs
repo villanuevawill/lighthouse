@@ -58,6 +58,7 @@ fn verify_exit_parametric(
         }
     );
 
+    /*
     // Must have been in the validator set long enough.
     let lifespan = state.slot.epoch(spec.slots_per_epoch) - validator.activation_epoch;
     verify!(
@@ -67,6 +68,7 @@ fn verify_exit_parametric(
             expected: spec.persistent_committee_period,
         }
     );
+    */
 
     let message = exit.signed_root();
     let domain = spec.get_domain(exit.epoch, Domain::Exit, &state.fork);

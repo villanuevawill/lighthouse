@@ -61,7 +61,9 @@ impl BlockBenchingBuilder {
 
         builder.set_slot(state.slot);
 
-        let proposer_index = state.get_beacon_proposer_index(state.slot, spec).unwrap();
+        let proposer_index = state
+            .get_beacon_proposer_index(state.slot, RelativeEpoch::Current, spec)
+            .unwrap();
         let keypair = &keypairs[proposer_index];
 
         builder.set_randao_reveal(&keypair.sk, &state.fork, spec);
@@ -168,7 +170,7 @@ impl BlockBenchingBuilder {
         let mut block = self.block_builder.build(&keypair.sk, &state.fork, spec);
 
         // Set the eth1 data to be different from the state.
-        block.eth1_data.block_hash = Hash256::from_slice(&vec![42; 32]);
+        block.body.eth1_data.block_hash = Hash256::from_slice(&vec![42; 32]);
 
         (block, state)
     }

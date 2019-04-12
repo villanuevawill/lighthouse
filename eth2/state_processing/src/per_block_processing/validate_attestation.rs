@@ -229,7 +229,10 @@ fn verify_attestation_signature(
     a: &Attestation,
     spec: &ChainSpec,
 ) -> Result<(), Error> {
-    let mut aggregate_pubs = vec![AggregatePublicKey::new(); 2];
+    // let mut aggregate_pubs = vec![AggregatePublicKey::new(); 2];
+
+    let mut aggregate_pub_keys: Vec<Vec<&PublicKey>> = vec![vec![], vec![]];
+
     let mut message_exists = vec![false; 2];
     let attestation_epoch = a.data.slot.epoch(spec.slots_per_epoch);
 
@@ -257,13 +260,21 @@ fn verify_attestation_signature(
 
             match state.validator_registry.get(*v as usize) {
                 Some(validator) => {
-                    aggregate_pubs[custody_bit as usize].add(&validator.pubkey);
+                    aggregate_pub_keys[custody_bit as usize].push(&validator.pubkey);
                 }
                 // Return error if validator index is unknown.
                 None => return Err(Error::BeaconStateError(BeaconStateError::UnknownValidator)),
             };
         }
     }
+
+    let mut agg_pub_0 = AggregatePublicKey::new();
+    agg_pub_0.add_many(&aggregate_pub_keys[0]);
+
+    let mut agg_pub_1 = AggregatePublicKey::new();
+    agg_pub_1.add_many(&aggregate_pub_keys[1]);
+
+    let aggregate_pubs = vec![agg_pub_0, agg_pub_1];
 
     // Message when custody bitfield is `false`
     let message_0 = AttestationDataAndCustodyBit {

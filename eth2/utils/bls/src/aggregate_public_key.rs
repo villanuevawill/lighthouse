@@ -17,6 +17,11 @@ impl AggregatePublicKey {
         self.0.add(public_key.as_raw())
     }
 
+    pub fn add_many(&mut self, pubkeys: &[&PublicKey]) {
+        let pubkeys: Vec<_> = pubkeys.iter().map(|pk| pk.as_raw()).collect();
+        self.0.add_many(&pubkeys)
+    }
+
     /// Returns the underlying public key.
     pub fn as_raw(&self) -> &RawAggregatePublicKey {
         &self.0

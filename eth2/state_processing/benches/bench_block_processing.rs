@@ -21,6 +21,7 @@ pub fn bench_block_processing(
     initial_spec: &ChainSpec,
     desc: &str,
 ) {
+    /*
     let state = initial_state.clone();
     let block = initial_block.clone();
     let spec = initial_spec.clone();
@@ -183,6 +184,7 @@ pub fn bench_block_processing(
         })
         .sample_size(10),
     );
+    */
 
     let state = initial_state.clone();
     let block = initial_block.clone();

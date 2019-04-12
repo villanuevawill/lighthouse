@@ -49,10 +49,7 @@ impl TestingAttestationDataBuilder {
 
             // Crosslink vote
             shard,
-            previous_crosslink: Crosslink {
-                epoch: slot.epoch(spec.slots_per_epoch),
-                crosslink_data_root: spec.zero_hash,
-            },
+            previous_crosslink: state.latest_crosslinks[shard as usize].clone(),
             crosslink_data_root: spec.zero_hash,
         };
 

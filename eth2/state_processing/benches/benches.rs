@@ -6,10 +6,10 @@ use log::info;
 use types::*;
 
 mod bench_block_processing;
-mod bench_epoch_processing;
+// mod bench_epoch_processing;
 mod block_benching_builder;
 
-pub const VALIDATOR_COUNT: usize = 16_384;
+pub const VALIDATOR_COUNT: usize = 4_000_000;
 
 // `LOG_LEVEL == "info"` gives handy messages.
 pub const LOG_LEVEL: &str = "info";
@@ -90,14 +90,16 @@ pub fn block_processing_reasonable_case(c: &mut Criterion) {
     );
 }
 
+/*
 pub fn state_processing(c: &mut Criterion) {
     bench_epoch_processing::bench_epoch_processing_n_validators(c, VALIDATOR_COUNT);
 }
+*/
 
 criterion_group!(
     benches,
     block_processing_reasonable_case,
     block_processing_worst_case,
-    state_processing
+    // state_processing
 );
 criterion_main!(benches);
