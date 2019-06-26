@@ -17,7 +17,7 @@ fn main() {
     let decorator = slog_term::TermDecorator::new().build();
     let drain = slog_term::CompactFormat::new(decorator).build().fuse();
     let drain = slog_async::Async::new(drain).build().fuse();
-    let logger = slog::Logger::root(drain, o!());
+    let mut logger = slog::Logger::root(drain, o!());
 
     let matches = App::new("Lighthouse")
         .version(version::version().as_str())
@@ -31,6 +31,13 @@ fn main() {
                 .help("Data directory for keys and databases.")
                 .takes_value(true)
                 .default_value(DEFAULT_DATA_DIR),
+        )
+        .arg(
+            Arg::with_name("logfile")
+                .long("logfile")
+                .value_name("logfile")
+                .help("File path where output will be written.")
+                .takes_value(true),
         )
         // network related arguments
         .arg(
@@ -151,7 +158,7 @@ fn main() {
     client_config.data_dir = data_dir.clone();
 
     // Update the client config with any CLI args.
-    match client_config.apply_cli_args(&matches) {
+    match client_config.apply_cli_args(&matches, &mut logger) {
         Ok(()) => (),
         Err(s) => {
             crit!(logger, "Failed to parse ClientConfig CLI arguments"; "error" => s);
