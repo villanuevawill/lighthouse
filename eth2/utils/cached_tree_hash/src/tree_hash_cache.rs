@@ -3,6 +3,7 @@
 use super::*;
 use crate::merkleize::{merkleize, pad_for_leaf_count};
 use int_to_bytes::int_to_bytes32;
+use ssz_derive::{Decode, Encode};
 
 /// Provides cached tree hashing for some object implementing `CachedTreeHash`.
 ///
@@ -10,7 +11,7 @@ use int_to_bytes::int_to_bytes32;
 /// changed.
 ///
 /// See the crate root for an example.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Encode, Decode)]
 pub struct TreeHashCache {
     /// Stores the binary-tree in 32-byte chunks.
     pub bytes: Vec<u8>,

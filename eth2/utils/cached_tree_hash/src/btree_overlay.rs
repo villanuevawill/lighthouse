@@ -1,10 +1,11 @@
 use super::*;
+use ssz_derive::{Decode, Encode};
 
 /// A schema defining a binary tree over a `TreeHashCache`.
 ///
 /// This structure is used for succinct storage; run-time functionality is gained by converting a
 /// `BTreeSchema` into a `BTreeOverlay`.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Encode, Decode)]
 pub struct BTreeSchema {
     /// The depth of a schema defines how far it is nested within other fixed-length items.
     ///
