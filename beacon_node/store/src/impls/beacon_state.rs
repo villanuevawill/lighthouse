@@ -1,4 +1,5 @@
 use crate::*;
+use cached_tree_hash::TreeHashCache;
 use ssz::{Decode, DecodeError, Encode};
 use ssz_derive::{Decode, Encode};
 use std::convert::TryInto;
@@ -9,6 +10,7 @@ use types::beacon_state::{CommitteeCache, CACHED_EPOCHS};
 struct StorageContainer {
     state_bytes: Vec<u8>,
     committee_caches_bytes: Vec<Vec<u8>>,
+    tree_hash_cache_bytes: Vec<u8>,
 }
 
 impl StorageContainer {
@@ -20,9 +22,12 @@ impl StorageContainer {
             committee_caches_bytes.push(cache.as_ssz_bytes());
         }
 
+        let tree_hash_cache_bytes = state.tree_hash_cache.as_ssz_bytes();
+
         Self {
             state_bytes: state.as_ssz_bytes(),
             committee_caches_bytes,
+            tree_hash_cache_bytes,
         }
     }
 }
@@ -42,6 +47,8 @@ impl<T: EthSpec> TryInto<BeaconState<T>> for StorageContainer {
 
             state.committee_caches[i] = CommitteeCache::from_ssz_bytes(bytes)?;
         }
+
+        state.tree_hash_cache = TreeHashCache::from_ssz_bytes(&self.tree_hash_cache_bytes)?;
 
         Ok(state)
     }
