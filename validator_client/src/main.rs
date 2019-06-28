@@ -25,7 +25,7 @@ fn main() {
     let decorator = slog_term::TermDecorator::new().build();
     let drain = slog_term::CompactFormat::new(decorator).build().fuse();
     let drain = slog_async::Async::new(drain).build().fuse();
-    let mut logger = slog::Logger::root(drain, o!());
+    let mut log = slog::Logger::root(drain, o!());
 
     // CLI
     let matches = App::new("Lighthouse Validator Client")
@@ -76,7 +76,7 @@ fn main() {
     let data_dir = match get_data_dir(&matches, PathBuf::from(DEFAULT_DATA_DIR)) {
         Ok(dir) => dir,
         Err(e) => {
-            crit!(logger, "Failed to initialize data dir"; "error" => format!("{:?}", e));
+            crit!(log, "Failed to initialize data dir"; "error" => format!("{:?}", e));
             return;
         }
     };
@@ -93,13 +93,13 @@ fn main() {
         Ok(None) => {
             let default = ValidatorClientConfig::default();
             if let Err(e) = write_to_file(client_config_path.clone(), &default) {
-                crit!(logger, "Failed to write default ClientConfig to file"; "error" => format!("{:?}", e));
+                crit!(log, "Failed to write default ClientConfig to file"; "error" => format!("{:?}", e));
                 return;
             }
             default
         }
         Err(e) => {
-            crit!(logger, "Failed to load a ChainConfig file"; "error" => format!("{:?}", e));
+            crit!(log, "Failed to load a ChainConfig file"; "error" => format!("{:?}", e));
             return;
         }
     };
@@ -108,10 +108,10 @@ fn main() {
     client_config.data_dir = data_dir.clone();
 
     // Update the client config with any CLI args.
-    match client_config.apply_cli_args(&matches, &mut logger) {
+    match client_config.apply_cli_args(&matches, &mut log) {
         Ok(()) => (),
         Err(s) => {
-            crit!(logger, "Failed to parse ClientConfig CLI arguments"; "error" => s);
+            crit!(log, "Failed to parse ClientConfig CLI arguments"; "error" => s);
             return;
         }
     };
@@ -133,13 +133,13 @@ fn main() {
                 _ => unreachable!(), // Guarded by slog.
             };
             if let Err(e) = write_to_file(eth2_config_path, &default) {
-                crit!(logger, "Failed to write default Eth2Config to file"; "error" => format!("{:?}", e));
+                crit!(log, "Failed to write default Eth2Config to file"; "error" => format!("{:?}", e));
                 return;
             }
             default
         }
         Err(e) => {
-            crit!(logger, "Failed to instantiate an Eth2Config"; "error" => format!("{:?}", e));
+            crit!(log, "Failed to instantiate an Eth2Config"; "error" => format!("{:?}", e));
             return;
         }
     };
@@ -148,13 +148,13 @@ fn main() {
     match eth2_config.apply_cli_args(&matches) {
         Ok(()) => (),
         Err(s) => {
-            crit!(logger, "Failed to parse Eth2Config CLI arguments"; "error" => s);
+            crit!(log, "Failed to parse Eth2Config CLI arguments"; "error" => s);
             return;
         }
     };
 
     info!(
-        logger,
+        log,
         "Starting validator client";
         "datadir" => client_config.data_dir.to_str(),
         "spec_constants" => &eth2_config.spec_constants,
@@ -164,15 +164,15 @@ fn main() {
         "mainnet" => ValidatorService::<ValidatorServiceClient, Keypair>::start::<MainnetEthSpec>(
             client_config,
             eth2_config,
-            logger.clone(),
+            log.clone(),
         ),
         "minimal" => ValidatorService::<ValidatorServiceClient, Keypair>::start::<MinimalEthSpec>(
             client_config,
             eth2_config,
-            logger.clone(),
+            log.clone(),
         ),
         other => {
-            crit!(logger, "Unknown spec constants"; "title" => other);
+            crit!(log, "Unknown spec constants"; "title" => other);
             return;
         }
     };
@@ -180,7 +180,7 @@ fn main() {
     // start the validator service.
     // this specifies the GRPC and signer type to use as the duty manager beacon node.
     match result {
-        Ok(_) => info!(logger, "Validator client shutdown successfully."),
-        Err(e) => crit!(logger, "Validator client exited with error"; "error" => e.to_string()),
+        Ok(_) => info!(log, "Validator client shutdown successfully."),
+        Err(e) => crit!(log, "Validator client exited with error"; "error" => e.to_string()),
     }
 }

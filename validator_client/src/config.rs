@@ -44,7 +44,7 @@ impl Config {
     pub fn apply_cli_args(
         &mut self,
         args: &ArgMatches,
-        logger: &mut slog::Logger,
+        log: &mut slog::Logger,
     ) -> Result<(), &'static str> {
         if let Some(datadir) = args.value_of("datadir") {
             self.data_dir = PathBuf::from(datadir);
@@ -52,7 +52,7 @@ impl Config {
 
         if let Some(log_file) = args.value_of("logfile") {
             self.log_file = PathBuf::from(log_file);
-            self.update_logger(logger)?;
+            self.update_logger(log)?;
         };
 
         if let Some(srv) = args.value_of("server") {
@@ -63,7 +63,7 @@ impl Config {
     }
 
     // Update the logger to output in JSON to specified file
-    fn update_logger(&mut self, logger: &mut slog::Logger) -> Result<(), &'static str> {
+    fn update_logger(&mut self, log: &mut slog::Logger) -> Result<(), &'static str> {
         let file = OpenOptions::new()
             .create(true)
             .write(true)
@@ -77,19 +77,19 @@ impl Config {
 
         if let Some(file) = self.log_file.to_str() {
             info!(
-                *logger,
+                *log,
                 "Log file specified, output will now be written to {} in json.", file
             );
         } else {
             info!(
-                *logger,
+                *log,
                 "Log file specified output will now be written in json"
             );
         }
 
         let drain = Mutex::new(slog_json::Json::default(file)).fuse();
         let drain = slog_async::Async::new(drain).build().fuse();
-        *logger = slog::Logger::root(drain, o!());
+        *log = slog::Logger::root(drain, o!());
 
         Ok(())
     }

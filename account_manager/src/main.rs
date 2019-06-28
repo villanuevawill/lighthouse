@@ -14,7 +14,7 @@ fn main() {
     let decorator = slog_term::TermDecorator::new().build();
     let drain = slog_term::CompactFormat::new(decorator).build().fuse();
     let drain = slog_async::Async::new(drain).build().fuse();
-    let mut logger = slog::Logger::root(drain, o!());
+    let mut log = slog::Logger::root(drain, o!());
 
     // CLI
     let matches = App::new("Lighthouse Accounts Manager")
@@ -71,7 +71,7 @@ fn main() {
     let data_dir = match get_data_dir(&matches, PathBuf::from(DEFAULT_DATA_DIR)) {
         Ok(dir) => dir,
         Err(e) => {
-            crit!(logger, "Failed to initialize data dir"; "error" => format!("{:?}", e));
+            crit!(log, "Failed to initialize data dir"; "error" => format!("{:?}", e));
             return;
         }
     };
@@ -81,17 +81,17 @@ fn main() {
     // Ensure the `data_dir` in the config matches that supplied to the CLI.
     client_config.data_dir = data_dir.clone();
 
-    if let Err(e) = client_config.apply_cli_args(&matches, &mut logger) {
-        crit!(logger, "Failed to parse ClientConfig CLI arguments"; "error" => format!("{:?}", e));
+    if let Err(e) = client_config.apply_cli_args(&matches, &mut log) {
+        crit!(log, "Failed to parse ClientConfig CLI arguments"; "error" => format!("{:?}", e));
         return;
     };
 
     // Log configuration
-    info!(logger, "";
+    info!(log, "";
           "data_dir" => &client_config.data_dir.to_str());
 
     match matches.subcommand() {
-        ("generate", Some(_)) => generate_random(&client_config, &logger),
+        ("generate", Some(_)) => generate_random(&client_config, &log),
         ("generate_deterministic", Some(m)) => {
             if let Some(string) = m.value_of("validator index") {
                 let i: usize = string.parse().expect("Invalid validator index");
@@ -99,9 +99,9 @@ fn main() {
                     let n: usize = string.parse().expect("Invalid end validator count");
 
                     let indices: Vec<usize> = (i..i + n).collect();
-                    generate_deterministic_multiple(&indices, &client_config, &logger)
+                    generate_deterministic_multiple(&indices, &client_config, &log)
                 } else {
-                    generate_deterministic(i, &client_config, &logger)
+                    generate_deterministic(i, &client_config, &log)
                 }
             }
         }
@@ -111,38 +111,38 @@ fn main() {
     }
 }
 
-fn generate_random(config: &ValidatorClientConfig, logger: &slog::Logger) {
-    save_key(&Keypair::random(), config, logger)
+fn generate_random(config: &ValidatorClientConfig, log: &slog::Logger) {
+    save_key(&Keypair::random(), config, log)
 }
 
 fn generate_deterministic_multiple(
     validator_indices: &[usize],
     config: &ValidatorClientConfig,
-    logger: &slog::Logger,
+    log: &slog::Logger,
 ) {
     for validator_index in validator_indices {
-        generate_deterministic(*validator_index, config, logger)
+        generate_deterministic(*validator_index, config, log)
     }
 }
 
 fn generate_deterministic(
     validator_index: usize,
     config: &ValidatorClientConfig,
-    logger: &slog::Logger,
+    log: &slog::Logger,
 ) {
     save_key(
         &generate_deterministic_keypair(validator_index),
         config,
-        logger,
+        log,
     )
 }
 
-fn save_key(keypair: &Keypair, config: &ValidatorClientConfig, logger: &slog::Logger) {
+fn save_key(keypair: &Keypair, config: &ValidatorClientConfig, log: &slog::Logger) {
     let key_path: PathBuf = config
         .save_key(&keypair)
         .expect("Unable to save newly generated private key.");
     debug!(
-        logger,
+        log,
         "Keypair generated {:?}, saved to: {:?}",
         keypair.identifier(),
         key_path.to_string_lossy()

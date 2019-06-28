@@ -17,7 +17,7 @@ fn main() {
     let decorator = slog_term::TermDecorator::new().build();
     let drain = slog_term::CompactFormat::new(decorator).build().fuse();
     let drain = slog_async::Async::new(drain).build().fuse();
-    let mut logger = slog::Logger::root(drain, o!());
+    let mut log = slog::Logger::root(drain, o!());
 
     let matches = App::new("Lighthouse")
         .version(version::version().as_str())
@@ -128,7 +128,7 @@ fn main() {
     let data_dir = match get_data_dir(&matches, PathBuf::from(DEFAULT_DATA_DIR)) {
         Ok(dir) => dir,
         Err(e) => {
-            crit!(logger, "Failed to initialize data dir"; "error" => format!("{:?}", e));
+            crit!(log, "Failed to initialize data dir"; "error" => format!("{:?}", e));
             return;
         }
     };
@@ -143,13 +143,13 @@ fn main() {
         Ok(None) => {
             let default = ClientConfig::default();
             if let Err(e) = write_to_file(client_config_path, &default) {
-                crit!(logger, "Failed to write default ClientConfig to file"; "error" => format!("{:?}", e));
+                crit!(log, "Failed to write default ClientConfig to file"; "error" => format!("{:?}", e));
                 return;
             }
             default
         }
         Err(e) => {
-            crit!(logger, "Failed to load a ChainConfig file"; "error" => format!("{:?}", e));
+            crit!(log, "Failed to load a ChainConfig file"; "error" => format!("{:?}", e));
             return;
         }
     };
@@ -158,10 +158,10 @@ fn main() {
     client_config.data_dir = data_dir.clone();
 
     // Update the client config with any CLI args.
-    match client_config.apply_cli_args(&matches, &mut logger) {
+    match client_config.apply_cli_args(&matches, &mut log) {
         Ok(()) => (),
         Err(s) => {
-            crit!(logger, "Failed to parse ClientConfig CLI arguments"; "error" => s);
+            crit!(log, "Failed to parse ClientConfig CLI arguments"; "error" => s);
             return;
         }
     };
@@ -180,13 +180,13 @@ fn main() {
                 _ => unreachable!(), // Guarded by slog.
             };
             if let Err(e) = write_to_file(eth2_config_path, &default) {
-                crit!(logger, "Failed to write default Eth2Config to file"; "error" => format!("{:?}", e));
+                crit!(log, "Failed to write default Eth2Config to file"; "error" => format!("{:?}", e));
                 return;
             }
             default
         }
         Err(e) => {
-            crit!(logger, "Failed to load/generate an Eth2Config"; "error" => format!("{:?}", e));
+            crit!(log, "Failed to load/generate an Eth2Config"; "error" => format!("{:?}", e));
             return;
         }
     };
@@ -195,13 +195,13 @@ fn main() {
     match eth2_config.apply_cli_args(&matches) {
         Ok(()) => (),
         Err(s) => {
-            crit!(logger, "Failed to parse Eth2Config CLI arguments"; "error" => s);
+            crit!(log, "Failed to parse Eth2Config CLI arguments"; "error" => s);
             return;
         }
     };
 
-    match run::run_beacon_node(client_config, eth2_config, &logger) {
+    match run::run_beacon_node(client_config, eth2_config, &log) {
         Ok(_) => {}
-        Err(e) => crit!(logger, "Beacon node failed to start"; "reason" => format!("{:}", e)),
+        Err(e) => crit!(log, "Beacon node failed to start"; "reason" => format!("{:}", e)),
     }
 }
