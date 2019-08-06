@@ -8,8 +8,10 @@ use utils::{u8_from_hex_str, u8_to_hex_str};
 /// Spec v0.8.1
 pub enum Domain {
     BeaconProposer,
+    ShardProposer,
     Randao,
     Attestation,
+    ShardAttestation,
     Deposit,
     VoluntaryExit,
     Transfer,
@@ -59,6 +61,9 @@ pub struct ChainSpec {
      * Time parameters
      */
     pub milliseconds_per_slot: u64,
+    pub genesis_time: u64,
+    pub seconds_per_slot: u64,
+    pub shard_seconds_per_slot: u64,
     pub min_attestation_inclusion_delay: u64,
     pub min_seed_lookahead: Epoch,
     pub activation_exit_delay: u64,
@@ -85,8 +90,10 @@ pub struct ChainSpec {
      * Use `ChainSpec::get_domain(..)` to access these values.
      */
     domain_beacon_proposer: u32,
+    domain_shard_proposer: u32,
     domain_randao: u32,
     domain_attestation: u32,
+    domain_shard_attestation: u32,
     domain_deposit: u32,
     domain_voluntary_exit: u32,
     domain_transfer: u32,
@@ -102,8 +109,10 @@ impl ChainSpec {
     pub fn get_domain(&self, epoch: Epoch, domain: Domain, fork: &Fork) -> u64 {
         let domain_constant = match domain {
             Domain::BeaconProposer => self.domain_beacon_proposer,
+            Domain::ShardProposer => self.domain_beacon_proposer,
             Domain::Randao => self.domain_randao,
             Domain::Attestation => self.domain_attestation,
+            Domain::ShardAttestation => self.domain_shard_attestation,
             Domain::Deposit => self.domain_deposit,
             Domain::VoluntaryExit => self.domain_voluntary_exit,
             Domain::Transfer => self.domain_transfer,
@@ -160,6 +169,9 @@ impl ChainSpec {
              */
             milliseconds_per_slot: 6_000,
             min_attestation_inclusion_delay: 1,
+            genesis_time: u64::from(u32::max_value()),
+            seconds_per_slot: 6,
+            shard_seconds_per_slot: 3,
             min_seed_lookahead: Epoch::new(1),
             activation_exit_delay: 4,
             min_validator_withdrawability_delay: Epoch::new(256),
@@ -180,11 +192,13 @@ impl ChainSpec {
              * Signature domains
              */
             domain_beacon_proposer: 0,
-            domain_randao: 1,
-            domain_attestation: 2,
-            domain_deposit: 3,
-            domain_voluntary_exit: 4,
-            domain_transfer: 5,
+            domain_shard_proposer: 1,
+            domain_randao: 2,
+            domain_attestation: 3,
+            domain_shard_attestation: 4,
+            domain_deposit: 5,
+            domain_voluntary_exit: 6,
+            domain_transfer: 7,
 
             /*
              * Network specific
