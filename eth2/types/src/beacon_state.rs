@@ -429,6 +429,17 @@ impl<T: EthSpec> BeaconState<T> {
         })
     }
 
+    // NEED TO ADD 
+    pub fn get_shard_proposer_index() -> {
+        &self,
+        shard: Shard,
+        slot: Slot,
+        relative_epoch: RelativeEpoch,
+        spec: &ChainSpec,
+    ) -> Result<usize, Error> {
+        // needs implementation
+    }
+
     /// Safely obtains the index for latest block roots, given some `slot`.
     ///
     /// Spec v0.8.1
