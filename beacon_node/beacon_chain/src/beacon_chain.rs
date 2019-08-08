@@ -243,7 +243,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     /// genesis.
     ///
     /// Returns `None` for roots prior to genesis or when there is an error reading from `Store`.
-    pub fn rev_iter_state_roots(&self, slot: Slot) -> StateRootsIterator<T::EthSpec, T::Store> {
+    pub fn f(&self, slot: Slot) -> StateRootsIterator<T::EthSpec, T::Store> {
         StateRootsIterator::owned(self.store.clone(), self.state.read().clone(), slot)
     }
 
@@ -924,6 +924,65 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         dump.reverse();
 
         Ok(dump)
+    }
+
+    // Everything from this point on will techincally be moved into a trait
+    pub fn get_persistent_committee_at_block(&self, beacon_block_root: &Hash256, shard: Shard) -> Result<CrosslinkCommittee, Error> {
+        let block: BeaconBlock = match self.store.get(&beacon_block_root)? {
+            Some(block_root) => block_root,
+            None => {
+            }
+        };
+        let state_root = block.state_root;
+        let block_state = self
+            .store
+            .get(&state_root)?
+            .ok_or_else(|| Error::DBInconsistent(format!("Missing state {}", state_root)))?;
+
+        let mut state: BeaconState<T::EthSpec> = block_state;
+        state.get_crosslink_committee_for_shard(shard, state.current_epoch())
+    }
+
+    pub fn get_persistent_crosslink_committee(&self, shard: Shard) -> Result<CrosslinkCommittee, Error> {
+        let current_state = self.current_state();
+        current_state.get_crosslink_committee_for_shard(shard, current_state.current_epoch())
+    }
+
+    pub fn shard_block_proposer(&self, slot: Slot, shard: Shard) -> Result<usize, Error> {
+        self.catchup_state()?;
+        let index = self.state.read().get_shard_proposer_index(
+            slot,
+            shard,
+            RelativeEpoch::Current,
+            &self.spec,
+        )?;
+
+        Ok(index)
+    }
+
+    // need to support lookup by epoch
+    pub fn get_current_crosslink(&self, shard: u64) -> Result<&Crosslink, Error> {
+        self.current_state().get_current_crosslink(shard)
+    }
+
+    // need to support lookup by epoch
+    pub fn get_finalized_crosslink(&self, shard: Shard, epoch: Epoch) -> {
+        let current_state = self.current_state();
+        let finalized_block_root = current_state.finalized_block_root;
+
+        let finalized_block: BeaconBlock = match self.store.get(&finalized_block_root)? {
+            Some(block_root) => block_root,
+            None => {
+            }
+        };
+        let state_root = finalized_block.state_root;
+        let finalized_state_root = self
+            .store
+            .get(&state_root)?
+            .ok_or_else(|| Error::DBInconsistent(format!("Missing state {}", state_root)))?;
+
+        let mut state: BeaconState<T::EthSpec> = finalized_state_root;
+        finalized_state_root().get_current_crosslink(shard)
     }
 }
 

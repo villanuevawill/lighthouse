@@ -32,11 +32,6 @@ pub enum Error {
     UnknownValidator,
     UnableToDetermineProducer,
     InvalidBitfield,
-    ValidatorIsWithdrawable,
-    UnableToShuffle,
-    TooManyValidators,
-    InsufficientValidators,
-    InsufficientRandaoMixes,
     InsufficientBlockRoots,
     InsufficientIndexRoots,
     InsufficientAttestations,
@@ -73,11 +68,11 @@ where
 
     // Attestations - split by epoch necessary or just from latest finalized crosslink?
     // Going to need a way to request the attestation properly by epoch... play with this later
-    pub running_attestations: Vec<PendingAttestation>,
+    pub running_attestations: Vec<ShardPendingAttestation>,
 
-    // Latest beacon roots needed
+    // Latest beacon root needed
     // Latest crosslinks not needed since it will only duplicate data accessed via beacon roots
-    pub latest_beacon_roots: FixedLenVec<Hash256, T::SlotsPerHistoricalRoot>,
+    pub beacon_root: Hash256,
 
     // Recent state
     pub latest_block_roots: FixedLenVec<Hash256, T::SlotsPerHistoricalRoot>,
@@ -106,41 +101,18 @@ impl<T: EthSpec> ShardState<T> {
             fork: Fork::genesis(T::genesis_epoch()),
 
             // Attestations
-            previous_epoch_attestations: vec![],
-            current_epoch_attestations: vec![],
+            running_attestations: vec![],
 
             // Recent state
-            current_crosslinks: vec![initial_crosslink.clone(); T::ShardCount::to_usize()].into(),
-            previous_crosslinks: vec![initial_crosslink; T::ShardCount::to_usize()].into(),
             latest_block_roots: vec![spec.zero_hash; T::SlotsPerHistoricalRoot::to_usize()].into(),
             latest_state_roots: vec![spec.zero_hash; T::SlotsPerHistoricalRoot::to_usize()].into(),
-            latest_active_index_roots: vec![
-                spec.zero_hash;
-                T::LatestActiveIndexRootsLength::to_usize()
-            ]
-            .into(),
-            latest_slashed_balances: vec![0; T::LatestSlashedExitLength::to_usize()].into(),
-            latest_block_header: BeaconBlock::empty(spec).temporary_block_header(spec),
+            latest_block_header: ShardBlock::empty(spec).temporary_block_header(spec),
             historical_roots: vec![],
-
-            /*
-             * PoW receipt root
-             */
-            latest_eth1_data,
-            eth1_data_votes: vec![],
-            deposit_index: 0,
 
             /*
              * Caching (not in spec)
              */
-            committee_caches: [
-                CommitteeCache::default(),
-                CommitteeCache::default(),
-                CommitteeCache::default(),
-            ],
-            pubkey_cache: PubkeyCache::default(),
             tree_hash_cache: TreeHashCache::default(),
-            exit_cache: ExitCache::default(),
         }
     }
 
@@ -159,18 +131,20 @@ impl<T: EthSpec> ShardState<T> {
     }
 
     /// Get the slot of an attestation.
-    ///
-    /// Note: Utilizes the cache and will fail if the appropriate cache is not initialized.
-    ///
+    /// Adds logic to iterate through latest block roots and match to the attestation data
+    /// 
     /// Spec v0.6.3
-    pub fn get_attestation_slot(&self, attestation_data: &AttestationData) -> Result<Slot, Error> {
-        let target_relative_epoch =
-            RelativeEpoch::from_epoch(self.current_epoch(), attestation_data.target_epoch)?;
-
-        let cc =
-            self.get_crosslink_committee_for_shard(attestation_data.shard, target_relative_epoch)?;
-
-        Ok(cc.slot)
+    pub fn get_attestation_slot(&self, attestation_data: &ShardAttestationData) -> Result<Slot, Error> {
+        let block_root = attestation_data.shard_block_root
+        
+        for (i, root) in self.latest_block_roots.iter().enumerate() {
+            if root == block_root {
+                // calculate logic here
+                Ok(slot)
+            }
+        }
+        
+        Ok(slot)
     }
 
     /// Safely obtains the index for latest block roots, given some `slot`.
@@ -180,14 +154,15 @@ impl<T: EthSpec> ShardState<T> {
         if (slot < self.slot) && (self.slot <= slot + self.latest_block_roots.len() as u64) {
             Ok(slot.as_usize() % self.latest_block_roots.len())
         } else {
-            Err(BeaconStateError::SlotOutOfBounds)
+            // Update proper error here
+            Err(ShardStateError::SlotOutOfBounds)
         }
     }
 
     /// Return the block root at a recent `slot`.
     ///
     /// Spec v0.6.3
-    pub fn get_block_root(&self, slot: Slot) -> Result<&Hash256, BeaconStateError> {
+    pub fn get_block_root(&self, slot: Slot) -> Result<&Hash256, ShardStateError> {
         let i = self.get_latest_block_roots_index(slot)?;
         Ok(&self.latest_block_roots[i])
     }
@@ -199,7 +174,7 @@ impl<T: EthSpec> ShardState<T> {
         &mut self,
         slot: Slot,
         block_root: Hash256,
-    ) -> Result<(), BeaconStateError> {
+    ) -> Result<(), ShardStateError> {
         let i = self.get_latest_block_roots_index(slot)?;
         self.latest_block_roots[i] = block_root;
         Ok(())
@@ -212,7 +187,7 @@ impl<T: EthSpec> ShardState<T> {
         if (slot < self.slot) && (self.slot <= slot + Slot::from(self.latest_state_roots.len())) {
             Ok(slot.as_usize() % self.latest_state_roots.len())
         } else {
-            Err(BeaconStateError::SlotOutOfBounds)
+            Err(ShardStateError::SlotOutOfBounds)
         }
     }
 
