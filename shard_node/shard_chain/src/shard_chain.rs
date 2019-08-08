@@ -213,18 +213,20 @@ impl<T: ShardChainTypes, L: BeaconChainTypes + ShardChainWrapper> ShardChain<T, 
     pub fn validator_index(&self, pubkey: &PublicKey) -> Option<usize> {
         // reference directly to beacon chain parent
         // needs to make sure it is part of this particular shard
-        // for (i, validator) in self
-        //     .head()
-        //     .beacon_state
-        //     .validator_registry
-        //     .iter()
-        //     .enumerate()
-        // {
-        //     if validator.pubkey == *pubkey {
-        //         return Some(i);
-        //     }
-        // }
-        // None
+        for (i, validator) in self
+            .parent_beacon
+            .current_state()
+            .validator_registry
+            .iter()
+            .enumerate()
+        {
+            if validator.pubkey == *pubkey {
+                if self.parent_beacon.current_state().get_attestation_duties(i).shard = self.shard {
+                    return Some(i);
+                }
+            }
+        }
+        None
     }
 
     /// Reads the slot clock, returns `None` if the slot is unavailable.
@@ -417,6 +419,7 @@ impl<T: ShardChainTypes, L: BeaconChainTypes + ShardChainWrapper> ShardChain<T, 
         // Store the block and state.
         self.store.put(&block_root, &block)?;
         self.store.put(&state_root, &state)?;
+        
 
         // Register the new block with the fork choice service.
         self.fork_choice.process_block(&state, &block, block_root)?;
@@ -558,9 +561,6 @@ impl<T: ShardChainTypes, L: BeaconChainTypes + ShardChainWrapper> ShardChain<T, 
             state
         };
 
-        // Save `self` to `self.store`.
-        self.persist()?;
-
         Ok(())
     }
 
@@ -572,7 +572,7 @@ impl<T: ShardChainTypes, L: BeaconChainTypes + ShardChainWrapper> ShardChain<T, 
         old_finalized_epoch: Epoch,
         finalized_block_root: Hash256,
     ) -> Result<(), Error> {
-        // Need to build logic here to manage pruning for shard as wel
+        // Need to build logic here to manage pruning for shard as well
         // let finalized_block = self
         //     .store
         //     .get::<BeaconBlock>(&finalized_block_root)?
