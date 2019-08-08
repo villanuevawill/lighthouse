@@ -1,5 +1,3 @@
-
-
 pub trait ShardChainTypes {
     type Store: store::Store;
     type SlotClock: slot_clock::SlotClock;
@@ -8,11 +6,10 @@ pub trait ShardChainTypes {
 }
 
 /// Represents the "Shard Chain" component of Ethereum 2.0. It holds a reference to a parent Beacon Chain
-pub struct ShardChain<T: ShardChainTypes> {
-    // TODO... pub parentBeacon: BeaconChain<ParentBeacon>... TODO
-    // pub shard_id: determine type,
+pub struct ShardChain<T: ShardChainTypes, L: BeaconChainTypes + ShardChainWrapper> {
+    pub parent_beacon: Arc<BeaconChain<L>>,
+    pub shard: Shard,
     pub spec: ChainSpec,
-    /// 
     /// Persistent storage for blocks, states, etc. Typically an on-disk store, such as LevelDB.
     pub store: Arc<T::Store>,
     /// Reports the current slot, typically based upon the system clock.
@@ -33,7 +30,7 @@ pub struct ShardChain<T: ShardChainTypes> {
     pub fork_choice: ForkChoice<T>,
 }
 
-impl<T: BeaconChainTypes> BeaconChain<T> {
+impl<T: ShardChainTypes, L: BeaconChainTypes + ShardChainWrapper> ShardChain<T, L> {
     /// Instantiate a new Beacon Chain, from genesis.
     pub fn from_genesis(
         store: Arc<T::Store>,
@@ -41,6 +38,8 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         mut genesis_state: ShardState<T::EthSpec>,
         genesis_block: ShardBlock,
         spec: ChainSpec,
+        shard: Shard,
+        parent_beacon: Arc<BeaconChain<L>>,
     ) -> Result<Self, Error> {
         genesis_state.build_all_caches(&spec)?;
 
@@ -62,6 +61,8 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         ));
 
         Ok(Self {
+            parent_beacon,
+            shard,
             spec,
             slot_clock,
             op_pool: OperationPool::new(),
