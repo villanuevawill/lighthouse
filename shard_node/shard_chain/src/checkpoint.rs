@@ -1,6 +1,6 @@
 use serde_derive::Serialize;
 use ssz_derive::{Decode, Encode};
-use types::{BeaconBlock, BeaconState, EthSpec, Hash256};
+use types::{ShardBlock, ShardState, EthSpec, Hash256};
 
 /// Represents some block and it's associated state. Generally, this will be used for tracking the
 /// head, justified head and finalized head.
