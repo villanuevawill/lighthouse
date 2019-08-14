@@ -1,3 +1,29 @@
+use crate::checkpoint::CheckPoint;
+use crate::errors::{ShardChainError as Error, BlockProductionError};
+use crate::fork_choice::{Error as ForkChoiceError, ForkChoice};
+use lmd_ghost::LmdGhost;
+// use operation_pool::{OperationPool};
+use parking_lot::{RwLock, RwLockReadGuard};
+use slot_clock::SlotClock;
+use state_processing::per_block_processing::errors::{
+    AttestationValidationError, AttesterSlashingValidationError,
+};
+use state_processing::{
+    per_block_processing, per_block_processing_without_verifying_block_signature,
+    per_slot_processing, BlockProcessingError,
+};
+use std::sync::Arc;
+// use store::iter::{BestBlockRootsIterator, BlockIterator, BlockRootsIterator, StateRootsIterator};
+use store::{Error as DBError, Store};
+use tree_hash::TreeHash;
+use types::*;
+
+// Text included in blocks.
+// Must be 32-bytes or panic.
+//
+//                          |-------must be this long------|
+pub const GRAFFITI: &str = "sigp/lighthouse-0.0.0-prerelease";
+
 pub trait ShardChainTypes {
     type Store: store::Store;
     type SlotClock: slot_clock::SlotClock;
@@ -6,10 +32,10 @@ pub trait ShardChainTypes {
 }
 
 /// Represents the "Shard Chain" component of Ethereum 2.0. It holds a reference to a parent Beacon Chain
-pub struct ShardChain<T: ShardChainTypes, L: BeaconChainTypes + ShardChainWrapper> {
+pub struct ShardChain<T: ShardChainTypes, L: BeaconChainTypes> {
     pub parent_beacon: Arc<BeaconChain<L>>,
     pub shard: Shard,
-    pub spec: ChainSpec,
+    pub spec: ChaitnSpec,
     /// Persistent storage for blocks, states, etc. Typically an on-disk store, such as LevelDB.
     pub store: Arc<T::Store>,
     /// Reports the current slot, typically based upon the system clock.
@@ -31,7 +57,7 @@ pub struct ShardChain<T: ShardChainTypes, L: BeaconChainTypes + ShardChainWrappe
 }
 
 impl<T: ShardChainTypes, L: BeaconChainTypes + ShardChainWrapper> ShardChain<T, L> {
-    /// Instantiate a new Beacon Chain, from genesis.
+    /// Instantiate a new Shard Chain, from genesis.
     pub fn from_genesis(
         store: Arc<T::Store>,
         slot_clock: T::SlotClock,
@@ -271,18 +297,18 @@ impl<T: ShardChainTypes, L: BeaconChainTypes + ShardChainWrapper> ShardChain<T, 
     ///
     /// Information is read from the present `beacon_state` shuffling, only information from the
     /// present epoch is available.
-    pub fn block_proposer(&self, slot: Slot) -> Result<usize, Error> {
+    pub fn block_proposer(&self, slot: Slot, shard: Shard) -> Result<usize, Error> {
         // Update to go to beacon chain for this information
         // Ensures that the present state has been advanced to the present slot, skipping slots if
         // blocks are not present.
         // self.catchup_state()?;
 
         // // TODO: permit lookups of the proposer at any slot.
-        // let index = self.state.read().get_beacon_proposer_index(
-        //     slot,
-        //     RelativeEpoch::Current,
-        //     &self.spec,
-        // )?;
+        let index = self.parent_beacon.get_shard_proposer_index(
+            slot,
+            shard,
+            &self.spec,
+        )?;
 
         Ok(index)
     }
