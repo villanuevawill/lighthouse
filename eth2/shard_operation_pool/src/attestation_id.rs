@@ -10,12 +10,12 @@ pub struct AttestationId {
 }
 
 /// Number of domain bytes that the end of an attestation ID is padded with.
-const DOMAIN_BYTES_LEN: usize = 8;
+const DOMAIN_BYTES_LEN: usize = 16;
 
 impl AttestationId {
     pub fn from_data<T: EthSpec>(
         attestation: &AttestationData,
-        state: &BeaconState<T>,
+        state: &ShardState<T>,
         spec: &ChainSpec,
     ) -> Self {
         let mut bytes = ssz_encode(attestation);
@@ -26,10 +26,12 @@ impl AttestationId {
 
     pub fn compute_domain_bytes<T: EthSpec>(
         epoch: Epoch,
-        state: &BeaconState<T>,
+        state: &ShardState<T>,
         spec: &ChainSpec,
+        slot: Slot
     ) -> Vec<u8> {
-        int_to_bytes8(spec.get_domain(epoch, Domain::Attestation, &state.fork))
+        // also pseudocoded here
+        int_to_bytes8(spec.get_domain(epoch, Domain::Attestation, &state.fork)) + int_to_bytes8(slot)
     }
 
     pub fn domain_bytes_match(&self, domain_bytes: &[u8]) -> bool {

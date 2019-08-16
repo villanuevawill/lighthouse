@@ -1,14 +1,10 @@
-mod attestation;
 mod attestation_id;
-mod max_cover;
 mod persistence;
 
 pub use persistence::PersistedOperationPool;
 
-use attestation::{earliest_attestation_validators, AttMaxCover};
 use attestation_id::AttestationId;
 use itertools::Itertools;
-use max_cover::maximum_cover;
 use parking_lot::RwLock;
 use state_processing::per_block_processing::{
     get_slashable_indices_modular, validate_attestation,
@@ -19,13 +15,13 @@ use state_processing::per_block_processing::{
 use std::collections::{btree_map::Entry, hash_map, BTreeMap, HashMap, HashSet};
 use std::marker::PhantomData;
 use types::{
-    ShardAttestation, BeaconState, ShardState, ChainSpec, EthSpec, Validator
+    Attestation, BeaconState, ShardState, ChainSpec, EthSpec, Validator
 };
 
 #[derive(Default, Debug)]
 pub struct OperationPool<T: EthSpec + Default> {
     /// Map from attestation ID (see below) to vectors of attestations.
-    attestations: RwLock<HashMap<AttestationId, Vec<ShardAttestation>>>,
+    attestations: RwLock<HashMap<AttestationId, Vec<Attestation>>>,
     // NOTE: We assume that there is only one deposit per index
     // because the Eth1 data is updated (at most) once per epoch,
     // and the spec doesn't seem to accomodate for re-orgs on a time-frame
@@ -42,9 +38,8 @@ impl<T: EthSpec> OperationPool<T> {
     /// Insert an attestation into the pool, aggregating it with existing attestations if possible.
     pub fn insert_attestation(
         &self,
-        attestation: Shardttestation,
-        state: &BeaconState<T>,
-        shard_state: &ShardState<T>,
+        attestation: Attestation,
+        state: &ShardState<T>,
         spec: &ChainSpec,
     ) -> () {
         let id = AttestationId::from_data(&attestation.data, state, spec);
@@ -91,11 +86,7 @@ impl<T: EthSpec> OperationPool<T> {
         let valid_attestations = reader
             .iter()
             .filter(|(key, _)| key.domain_bytes_match(&domain_bytes))
-            .flat_map(|(_, attestations)| attestations)
-            // remove valid check for now...
-            .map(|att| AttMaxCover::new(att, earliest_attestation_validators(att, state)));
-
-        maximum_cover(valid_attestations, spec.max_attestations as usize)
+            .flat_map(|(_, attestations)| attestations);
     }
 
     /// Remove attestations which are too old to be included in a block.
