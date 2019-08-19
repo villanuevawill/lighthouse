@@ -12,6 +12,7 @@ use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, Sub, SubAssi
 /// Beacon block height, effectively `Slot/GENESIS_START_BLOCK`.
 #[derive(Eq, Debug, Clone, Copy, Default, Serialize)]
 pub struct SlotHeight(u64);
+pub struct ShardSlotHeight(u64);
 
 impl_common!(SlotHeight);
 
@@ -26,6 +27,24 @@ impl SlotHeight {
 
     pub fn epoch(self, genesis_slot: u64, slots_per_epoch: u64) -> Epoch {
         Epoch::from(self.0.saturating_add(genesis_slot) / slots_per_epoch)
+    }
+
+    pub fn max_value() -> SlotHeight {
+        SlotHeight(u64::max_value())
+    }
+}
+
+impl ShardSlotHeight {
+    pub fn new(slot: u64) -> SlotHeight {
+        ShardSlotHeight(slot)
+    }
+
+    pub fn slot(self, genesis_slot: Slot) -> Slot {
+        ShardSlot::from(self.0.saturating_add(genesis_slot.as_u64()))
+    }
+
+    pub fn epoch(self, genesis_slot: u64, slots_per_epoch: u64, slots_per_beacon_slot: u64) -> Epoch {
+        Epoch::from(self.0.saturating_add(genesis_slot) / slots_per_epoch / slots_per_beacon_slot )
     }
 
     pub fn max_value() -> SlotHeight {
