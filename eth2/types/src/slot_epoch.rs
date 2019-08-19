@@ -27,10 +27,34 @@ use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, Sub, SubAssi
 pub struct Slot(u64);
 
 #[derive(Eq, Debug, Clone, Copy, Default, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct ShardSlot(u64);
+
+
+#[derive(Eq, Debug, Clone, Copy, Default, Serialize, Deserialize)]
 pub struct Epoch(u64);
 
 impl_common!(Slot);
+impl_common!(ShardSlot);
 impl_common!(Epoch);
+
+impl ShardSlot {
+    pub fn new(slot: u64) -> Slot {
+        ShardSlot(slot)
+    }
+
+    pub fn epoch(self, slots_per_epoch: u64, slots_per_beacon_slot: u64) -> {
+        Epoch::from(self.0 / slots_per_epoch / slots_per_beacon_slot)
+    }
+
+    pub fn height(self, genesis_slot: Slot) -> SlotHeight {
+        ShardSlotHeight::from(self.0.saturating_sub(genesis_slot.as_u64()))
+    }
+
+    pub fn max_value() -> Slot {
+        Slot(u64::max_value())
+    }
+}
 
 impl Slot {
     pub fn new(slot: u64) -> Slot {
@@ -42,7 +66,7 @@ impl Slot {
     }
 
     pub fn height(self, genesis_slot: Slot) -> SlotHeight {
-        SlotHeight::from(self.0.saturating_sub(genesis_slot.as_u64()))
+        ShardSlotHeight::from(self.0.saturating_sub(genesis_slot.as_u64()))
     }
 
     pub fn max_value() -> Slot {
