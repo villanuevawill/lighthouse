@@ -35,7 +35,7 @@ pub trait ShardChainTypes {
 pub struct ShardChain<T: ShardChainTypes, L: BeaconChainTypes> {
     pub parent_beacon: Arc<BeaconChain<L>>,
     pub shard: Shard,
-    pub spec: ChaitnSpec,
+    pub spec: ChainSpec,
     /// Persistent storage for blocks, states, etc. Typically an on-disk store, such as LevelDB.
     pub store: Arc<T::Store>,
     /// Reports the current slot, typically based upon the system clock.
