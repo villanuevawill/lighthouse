@@ -144,6 +144,8 @@ impl ChainSpec {
              * Misc
              */
             target_committee_size: 128,
+            target_period_committee_size: 128,
+            max_indices_per_attestation: 4096,
             min_per_epoch_churn_limit: 4,
             churn_limit_quotient: 65_536,
             shuffle_round_count: 90,

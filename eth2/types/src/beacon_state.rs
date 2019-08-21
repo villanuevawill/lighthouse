@@ -292,6 +292,12 @@ impl<T: EthSpec> BeaconState<T> {
         Ok(cache.epoch_committee_count() as u64)
     }
 
+    pub fn get_period_committee_count(&self, relative_epoch: RelativeEpoch) -> Result<u64, Error> {
+        let cache = self.cache(relative_epoch)?;
+
+        Ok(cache.period_committee_count() as u64)
+    }
+
     pub fn get_epoch_start_shard(&self, relative_epoch: RelativeEpoch) -> Result<u64, Error> {
         let cache = self.cache(relative_epoch)?;
 
@@ -387,6 +393,27 @@ impl<T: EthSpec> BeaconState<T> {
 
         Ok(committee)
     }
+
+
+    pub fn get_persistent_committee_for_shard(
+        &self,
+        shard: u64,
+        relative_epoch: RelativeEpoch,
+    ) -> Result<PeriodCommittee, Error> {
+        let cache = self.cache(relative_epoch)?;
+
+        let committee = cache
+            .get_period_committee_for_shard(shard)
+            .ok_or_else(|| Error::NoCommitteeForShard)?;
+
+        Ok(committee)
+    }
+
+
+    pub fn get_beacon_proposer_index(){
+
+    }
+
 
     /// Returns the beacon proposer index for the `slot` in the given `relative_epoch`.
     ///
