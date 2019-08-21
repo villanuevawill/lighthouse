@@ -415,12 +415,6 @@ impl<T: EthSpec> BeaconState<T> {
         Ok(committee)
     }
 
-
-    pub fn get_beacon_proposer_index(){
-
-    }
-
-
     /// Returns the beacon proposer index for the `slot` in the given `relative_epoch`.
     ///
     /// Spec v0.6.3
@@ -458,15 +452,41 @@ impl<T: EthSpec> BeaconState<T> {
         })
     }
 
-    // NEED TO ADD 
+    /// Returns the shard proposer index for the given `relative_epoch`
     pub fn get_shard_proposer_index() -> {
         &self,
-        shard: Shard,
-        slot: Slot,
         relative_epoch: RelativeEpoch,
+        shard: Shard,
+        slot: ShardSlot,
         spec: &ChainSpec,
     ) -> Result<usize, Error> {
-        // needs implementation
+        let cache = self.cache(relative_epoch)?;
+        let epoch = relative_epoch.into_epoch(self.current_epoch());
+
+        let committee = cache
+            .get_period_committee_for_shard(shard)
+            .ok_or_else(|| Error::SlotOutOfBounds)?;
+        let seed = self.generate_seed(epoch, spec)?;
+
+        let mut i = 0;
+        Ok(loop {
+            let candidate_index = committee[(slot.as_usize() + i) % committee.len()];
+            let random_byte = {
+                let mut preimage = seed.as_bytes().to_vec();
+                preimage.append(&mut int_to_bytes8((i / 32) as u64));
+                preimage.append(&mut int_to_bytes8(shard as u64));
+                preimage.append(&mut int_to_bytes8(slot as u64));
+                let hash = hash(&preimage);
+                hash[i % 32]
+            };
+            let effective_balance = self.validator_registry[candidate_index].effective_balance;
+            if (effective_balance * MAX_RANDOM_BYTE)
+                >= (spec.max_effective_balance * u64::from(random_byte))
+            {
+                break candidate_index;
+            }
+            i += 1;
+        })
     }
 
     /// Safely obtains the index for latest block roots, given some `slot`.
