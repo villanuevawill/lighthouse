@@ -18,6 +18,7 @@ pub struct CommitteeCache {
     shuffling_start_shard: u64,
     shard_count: u64,
     committee_count: usize,
+    period_committee_count: usize,
     slots_per_epoch: u64,
 }
 
@@ -50,6 +51,11 @@ impl CommitteeCache {
             spec.target_committee_size,
         ) as usize;
 
+        let period_committee_count = T::get_epoch_committee_count(
+            active_validator_indices.len(),
+            spec.target_period_committee_size,
+        ) as usize;
+
         let shuffling_start_shard =
             Self::compute_start_shard(state, relative_epoch, active_validator_indices.len(), spec);
 
@@ -79,6 +85,7 @@ impl CommitteeCache {
             shuffling,
             shard_count: T::shard_count() as u64,
             committee_count,
+            period_committee_count,
             slots_per_epoch: T::slots_per_epoch(),
             shuffling_positions,
         })
@@ -162,6 +169,15 @@ impl CommitteeCache {
             shard,
             committee,
             slot,
+        })
+    }
+
+    pub fn get_period_committee_for_shard(&self, shard: Shard) -> Option<CrosslinkCommittee> {
+        let committee = self.get_crosslink_committee_for_shard(shard)?.into_owned();
+
+        Some(PeriodCommittee {
+            shard,
+            committee[:self.period_committee_count],
         })
     }
 
