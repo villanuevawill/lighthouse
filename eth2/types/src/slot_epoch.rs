@@ -47,7 +47,7 @@ impl ShardSlot {
         Epoch::from(self.0 / slots_per_epoch / slots_per_beacon_slot)
     }
 
-    pub fn shard_period_start_epoch(self, slots_per_epoch: u64, slots_per_beacon_slot: u64, epochs_per_shard_period: u64) -> Epoch {
+    pub fn shard_period_start_epoch(self, slots_per_epoch: u64, slots_per_beacon_slot: u64, epochs_per_shard_period: u64, lookback: u64) -> Epoch {
         let epoch = self::Epoch(slots_per_epoch, slots_per_beacon_slot)
         Epoch::from(epoch - (epoch % epochs_per_shard_period) - lookback * epochs_per_shard_period)
     }
