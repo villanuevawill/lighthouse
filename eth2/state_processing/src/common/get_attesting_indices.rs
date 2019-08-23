@@ -39,7 +39,7 @@ pub fn get_shard_attesting_indices<T: EthSpec>(
     attestation_data: &AttestationData,
     bitfield: &Bitfield,
 ) -> Result<Vec<usize>, BeaconStateError> {
-    get_attesting_indices_unsorted(shard, state, attestation_data, bitfield).map(|mut indices| {
+    get_shard_attesting_indices_unsorted(shard, state, attestation_data, bitfield).map(|mut indices| {
         // Fast unstable sort is safe because validator indices are unique
         indices.sort_unstable();
         indices

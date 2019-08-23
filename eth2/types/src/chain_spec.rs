@@ -36,6 +36,8 @@ pub struct ChainSpec {
      * Misc
      */
     pub target_committee_size: usize,
+    pub target_period_committee_size: usize,
+    pub max_indices_per_attestation: u64,
     pub min_per_epoch_churn_limit: u64,
     pub churn_limit_quotient: u64,
     pub shuffle_round_count: u8,
@@ -71,6 +73,13 @@ pub struct ChainSpec {
     pub persistent_committee_period: u64,
     pub max_epochs_per_crosslink: u64,
     pub min_epochs_to_inactivity_penalty: u64,
+
+    /*
+    * Phase 1 specific values, fork epoch and slot are hardcoded to values for now
+    */
+    epochs_per_shard_period: u64,
+    phase_1_fork_epoch: u64,
+    phase_1_fork_slot: u64,
 
     /*
      * Reward and penalty quotients
@@ -228,6 +237,7 @@ impl ChainSpec {
 
         Self {
             target_committee_size: 4,
+            target_period_committee_size: 4,
             shuffle_round_count: 10,
             min_genesis_active_validator_count: 64,
             max_epochs_per_crosslink: 4,

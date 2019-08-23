@@ -8,8 +8,8 @@ pub struct PersistentCommittee<'a> {
 }
 
 impl<'a> PersistentCommittee<'a> {
-    pub fn into_owned(self) -> OwnedPeriodCommittee {
-        OwnedPeriodCommittee {
+    pub fn into_owned(self) -> OwnedPersistentCommittee {
+        OwnedPersistentCommittee {
             epoch: self.epoch,
             shard: self.shard,
             committee: self.committee.to_vec(),
@@ -17,9 +17,9 @@ impl<'a> PersistentCommittee<'a> {
     }
 }
 
-#[derive(Default, Clone, Debug, PartialEq, TreeHash, CachedTreeHash)]
+#[derive(Default, Clone, Debug, PartialEq)]
 pub struct OwnedPersistentCommittee {
-    pub slot: Epoch,
+    pub epoch: Epoch,
     pub shard: Shard,
     pub committee: Vec<usize>,
 }
