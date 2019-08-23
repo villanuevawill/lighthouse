@@ -133,9 +133,12 @@ impl<T: EthSpec> ShardState<T> {
     }
 
     pub fn get_persistent_committee(&self) -> PersistentCommittee {
-        let earlier_committee = self.get_earlier_committee();
-        let later_committee = self.get_later_committee();
+        let earlier_committee = self.get_earlier_committee().to_owned().committee;
+        let later_committee = self.get_later_committee().to_owned().committee;
 
+        let persistent_committee_indexes = {
+            // loop through properly
+        }
         // finish logic here - fairly simple
     }
 
