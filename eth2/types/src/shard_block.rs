@@ -8,7 +8,7 @@ use test_random_derive::TestRandom;
 use tree_hash::{SignedRoot, TreeHash};
 use tree_hash_derive::{CachedTreeHash, SignedRoot, TreeHash};
 
-/// A block of the `BeaconChain`.
+/// A block of the `ShardChain`.
 ///
 /// Spec v0.6.3
 #[derive(
@@ -25,7 +25,7 @@ use tree_hash_derive::{CachedTreeHash, SignedRoot, TreeHash};
     SignedRoot,
 )]
 pub struct ShardBlock {
-    pub slot: Slot,
+    pub slot: ShardSlot,
     pub previous_block_root: Hash256,
     pub state_root: Hash256,
     pub body: ShardBlockBody,
