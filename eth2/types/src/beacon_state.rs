@@ -390,7 +390,7 @@ impl<T: EthSpec> BeaconState<T> {
         &self,
         shard: u64,
         relative_epoch: RelativeEpoch,
-    ) -> Result<CrosslinkCommittee, Error> {
+    ) -> Result<CrofsslinkCommittee, Error> {
         let cache = self.cache(relative_epoch)?;
 
         let committee = cache
@@ -401,7 +401,7 @@ impl<T: EthSpec> BeaconState<T> {
     }
 
 
-    pub fn get_persistent_committee_for_shard(
+    pub fn get_period_committee_for_shard(
         &self,
         shard: u64,
         relative_epoch: RelativeEpoch,
@@ -458,14 +458,10 @@ impl<T: EthSpec> BeaconState<T> {
         relative_epoch: RelativeEpoch,
         shard: Shard,
         slot: ShardSlot,
+        committee: PersistentCommittee
         spec: &ChainSpec,
     ) -> Result<usize, Error> {
-        let cache = self.cache(relative_epoch)?;
         let epoch = relative_epoch.into_epoch(self.current_epoch());
-
-        let committee = cache
-            .get_period_committee_for_shard(shard)
-            .ok_or_else(|| Error::SlotOutOfBounds)?;
         let seed = self.generate_seed(epoch, spec)?;
 
         let mut i = 0;
