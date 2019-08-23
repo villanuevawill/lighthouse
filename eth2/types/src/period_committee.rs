@@ -17,7 +17,7 @@ impl<'a> PeriodCommittee<'a> {
     }
 }
 
-#[derive(Default, Clone, Debug, PartialEq, TreeHash, CachedTreeHash)]
+#[derive(Default, Clone, Debug, PartialEq)]
 pub struct OwnedPeriodCommittee {
     pub epoch: Epoch,
     pub shard: Shard,
