@@ -62,24 +62,25 @@ where
     T: EthSpec,
 {
     // Misc
-    pub slot: Slot,
-    pub genesis_time: u64,
+    pub slot: ShardSlot,
     pub fork: Fork,
 
-    // Attestations - split by epoch necessary or just from latest finalized crosslink?
-    // Going to need a way to request the attestation properly by epoch... play with this later
-    pub running_attestations: Vec<ShardPendingAttestation>,
+    // Attestations - Update to bitfield but simply one attestation included
+    pub attestation: ShardPendingAttestation,
 
     // Latest beacon root needed
-    // Latest crosslinks not needed since it will only duplicate data accessed via beacon roots
     pub beacon_root: Hash256,
 
-    // Recent state
-    pub latest_block_roots: FixedLenVec<Hash256, T::SlotsPerHistoricalRoot>,
-    #[compare_fields(as_slice)]
-    pub latest_state_roots: FixedLenVec<Hash256, T::SlotsPerHistoricalRoot>,
-    pub latest_block_header: ShardBlockHeader,
-    pub historical_roots: Vec<Hash256>,
+    // Parent root
+    pub parent_root: Hash256,
+
+    // Caching (not in the spec)
+    #[serde(default)]
+    #[ssz(skip_serializing)]
+    #[ssz(skip_deserializing)]
+    #[tree_hash(skip_hashing)]
+    #[test_random(default)]
+    pub committee_caches: [CommitteeCache; CACHED_EPOCHS],
 }
 
 impl<T: EthSpec> ShardState<T> {
@@ -100,8 +101,8 @@ impl<T: EthSpec> ShardState<T> {
             genesis_time,
             fork: Fork::genesis(T::genesis_epoch()),
 
-            // Attestations
-            running_attestations: vec![],
+            // Attestation
+            attestation: vec![],
 
             // Recent state
             latest_block_roots: vec![spec.zero_hash; T::SlotsPerHistoricalRoot::to_usize()].into(),
@@ -130,102 +131,15 @@ impl<T: EthSpec> ShardState<T> {
         }
     }
 
-    /// Get the slot of an attestation.
-    /// Adds logic to iterate through latest block roots and match to the attestation data
-    /// 
-    /// Spec v0.6.3
-    pub fn get_attestation_slot(&self, attestation_data: &ShardAttestationData) -> Result<Slot, Error> {
-        let block_root = attestation_data.shard_block_root
-        
-        for (i, root) in self.latest_block_roots.iter().enumerate() {
-            if root == block_root {
-                // calculate logic here
-                Ok(slot)
-            }
-        }
-        
-        Ok(slot)
-    }
-
-    /// Safely obtains the index for latest block roots, given some `slot`.
-    ///
-    /// Spec v0.6.3
-    fn get_latest_block_roots_index(&self, slot: Slot) -> Result<usize, Error> {
-        if (slot < self.slot) && (self.slot <= slot + self.latest_block_roots.len() as u64) {
-            Ok(slot.as_usize() % self.latest_block_roots.len())
-        } else {
-            // Update proper error here
-            Err(ShardStateError::SlotOutOfBounds)
-        }
-    }
-
-    /// Return the block root at a recent `slot`.
-    ///
-    /// Spec v0.6.3
-    pub fn get_block_root(&self, slot: Slot) -> Result<&Hash256, ShardStateError> {
-        let i = self.get_latest_block_roots_index(slot)?;
-        Ok(&self.latest_block_roots[i])
-    }
-
-    /// Sets the block root for some given slot.
-    ///
-    /// Spec v0.6.3
-    pub fn set_block_root(
-        &mut self,
-        slot: Slot,
-        block_root: Hash256,
-    ) -> Result<(), ShardStateError> {
-        let i = self.get_latest_block_roots_index(slot)?;
-        self.latest_block_roots[i] = block_root;
-        Ok(())
-    }
-
-    /// Safely obtains the index for latest state roots, given some `slot`.
-    ///
-    /// Spec v0.6.3
-    fn get_latest_state_roots_index(&self, slot: Slot) -> Result<usize, Error> {
-        if (slot < self.slot) && (self.slot <= slot + Slot::from(self.latest_state_roots.len())) {
-            Ok(slot.as_usize() % self.latest_state_roots.len())
-        } else {
-            Err(ShardStateError::SlotOutOfBounds)
-        }
-    }
-
-    /// Gets the state root for some slot.
-    ///
-    /// Spec v0.6.3
-    pub fn get_state_root(&self, slot: Slot) -> Result<&Hash256, Error> {
-        let i = self.get_latest_state_roots_index(slot)?;
-        Ok(&self.latest_state_roots[i])
-    }
-
-    /// Gets the oldest (earliest slot) state root.
-    ///
-    /// Spec v0.6.3
-    pub fn get_oldest_state_root(&self) -> Result<&Hash256, Error> {
-        let i = self
-            .get_latest_state_roots_index(self.slot - Slot::from(self.latest_state_roots.len()))?;
-        Ok(&self.latest_state_roots[i])
-    }
-
-    /// Sets the latest state root for slot.
-    ///
-    /// Spec v0.6.3
-    pub fn set_state_root(&mut self, slot: Slot, state_root: Hash256) -> Result<(), Error> {
-        let i = self.get_latest_state_roots_index(slot)?;
-        self.latest_state_roots[i] = state_root;
-        Ok(())
-    }
-
     /// Do we need this since the tree hash really is just the balance set of everyone?
     /// Build all the caches, if they need to be built.
-    pub fn build_all_caches(&mut self, spec: &ChainSpec) -> Result<(), Error> {
+    pub fn build_cache(&mut self, spec: &ChainSpec) -> Result<(), Error> {
         self.update_tree_hash_cache()?;
         Ok(())
     }
 
     /// Drop all caches on the state.
-    pub fn drop_all_caches(&mut self) {
+    pub fn drop_cache(&mut self) {
         self.drop_tree_hash_cache();
     }
 
