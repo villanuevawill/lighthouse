@@ -79,7 +79,6 @@ impl CommitteeCache {
             shuffling,
             shard_count: T::shard_count() as u64,
             committee_count,
-            period_committee_count,
             slots_per_epoch: T::slots_per_epoch(),
             shuffling_positions,
         })
@@ -166,12 +165,13 @@ impl CommitteeCache {
         })
     }
 
-    pub fn get_period_committee_for_shard(&self, shard: Shard, committee_size: u64) -> Option<CrosslinkCommittee> {
-        let committee = self.get_crosslink_committee_for_shard(shard)?.into_owned();
+    pub fn get_period_committee_for_shard(&self, shard: Shard, committee_size: u64) -> Option<PeriodCommittee> {
+        let committee = self.get_crosslink_committee_for_shard(shard)?.committee;
 
         Some(PeriodCommittee {
             shard,
-            committee[:committee_size],
+            epoch: self.initialized_epoch?,
+            committee: &committee[..committee_size as usize],
         })
     }
 

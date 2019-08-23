@@ -10,7 +10,7 @@
 //! implement `Into<u64>`, however this would allow operations between `Slots` and `Epochs` which
 //! may lead to programming errors which are not detected by the compiler.
 
-use crate::slot_height::SlotHeight;
+use crate::slot_height::{SlotHeight, ShardSlotHeight};
 use crate::test_utils::TestRandom;
 use rand::RngCore;
 use serde_derive::{Deserialize, Serialize};
@@ -39,7 +39,7 @@ impl_common!(ShardSlot);
 impl_common!(Epoch);
 
 impl ShardSlot {
-    pub fn new(slot: u64) -> Slot {
+    pub fn new(slot: u64) -> ShardSlot {
         ShardSlot(slot)
     }
 
@@ -48,11 +48,11 @@ impl ShardSlot {
     }
 
     pub fn shard_period_start_epoch(self, slots_per_epoch: u64, slots_per_beacon_slot: u64, epochs_per_shard_period: u64, lookback: u64) -> Epoch {
-        let epoch = self::Epoch(slots_per_epoch, slots_per_beacon_slot)
+        let epoch = self.epoch(slots_per_epoch, slots_per_beacon_slot);
         Epoch::from(epoch - (epoch % epochs_per_shard_period) - lookback * epochs_per_shard_period)
     }
 
-    pub fn height(self, genesis_slot: Slot) -> SlotHeight {
+    pub fn height(self, genesis_slot: Slot) -> ShardSlotHeight {
         ShardSlotHeight::from(self.0.saturating_sub(genesis_slot.as_u64()))
     }
 
@@ -71,7 +71,7 @@ impl Slot {
     }
 
     pub fn height(self, genesis_slot: Slot) -> SlotHeight {
-        ShardSlotHeight::from(self.0.saturating_sub(genesis_slot.as_u64()))
+        SlotHeight::from(self.0.saturating_sub(genesis_slot.as_u64()))
     }
 
     pub fn max_value() -> Slot {
