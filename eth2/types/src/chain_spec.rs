@@ -182,6 +182,13 @@ impl ChainSpec {
             min_epochs_to_inactivity_penalty: 4,
 
             /*
+             * Phase 1 specific values, fork epoch and slot are hardcoded to values for now
+             */
+            epochs_per_shard_period: 256,
+            phase_1_fork_epoch: 600,
+            phase_1_fork_slot: 38_400,
+
+            /*
              * Reward and penalty quotients
              */
             base_reward_factor: 64,
