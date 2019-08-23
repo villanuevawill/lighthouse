@@ -1,13 +1,13 @@
 use crate::*;
 
 #[derive(Default, Clone, Debug, PartialEq)]
-pub struct PeriodCommittee<'a> {
+pub struct PersistentCommittee<'a> {
     pub epoch: Epoch,
     pub shard: Shard,
     pub committee: &'a [usize],
 }
 
-impl<'a> PeriodCommittee<'a> {
+impl<'a> PersistentCommittee<'a> {
     pub fn into_owned(self) -> OwnedPeriodCommittee {
         OwnedPeriodCommittee {
             epoch: self.epoch,
@@ -18,8 +18,8 @@ impl<'a> PeriodCommittee<'a> {
 }
 
 #[derive(Default, Clone, Debug, PartialEq, TreeHash, CachedTreeHash)]
-pub struct OwnedPeriodCommittee {
-    pub epoch: Epoch,
+pub struct OwnedPersistentCommittee {
+    pub slot: Epoch,
     pub shard: Shard,
     pub committee: Vec<usize>,
 }
