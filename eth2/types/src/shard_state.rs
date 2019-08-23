@@ -63,7 +63,6 @@ where
 {
     // Misc
     pub slot: ShardSlot,
-    pub fork: Fork,
 
     // Attestations - Update to bitfield but simply one attestation included
     pub attestation: ShardPendingAttestation,
@@ -80,7 +79,7 @@ where
     #[ssz(skip_deserializing)]
     #[tree_hash(skip_hashing)]
     #[test_random(default)]
-    pub committee_caches: [CommitteeCache; CACHED_EPOCHS],
+    pub committees: [PeriodCommittee; 3],
 }
 
 impl<T: EthSpec> ShardState<T> {
@@ -97,23 +96,20 @@ impl<T: EthSpec> ShardState<T> {
         ShardState {
             // Misc
             slot: spec.genesis_slot,
-            // will this genesis time not matter - can we just pull from the spec?
-            genesis_time,
             fork: Fork::genesis(T::genesis_epoch()),
 
             // Attestation
-            attestation: vec![],
+            attestation: ShardPendingAttestation::default(),
 
-            // Recent state
-            latest_block_roots: vec![spec.zero_hash; T::SlotsPerHistoricalRoot::to_usize()].into(),
-            latest_state_roots: vec![spec.zero_hash; T::SlotsPerHistoricalRoot::to_usize()].into(),
-            latest_block_header: ShardBlock::empty(spec).temporary_block_header(spec),
-            historical_roots: vec![],
+            // Roots
+            beacon_root: Hash256::default(),
+            parent_root: Hash256::default(),
 
             /*
-             * Caching (not in spec)
+             * Cacheing (not in spec)
              */
             tree_hash_cache: TreeHashCache::default(),
+            committees: [PeriodCommittee::default(); 3],
         }
     }
 
@@ -124,11 +120,23 @@ impl<T: EthSpec> ShardState<T> {
         Hash256::from_slice(&self.tree_hash_root()[..])
     }
 
-    pub fn historical_batch(&self) -> HistoricalBatch<T> {
-        HistoricalBatch {
-            block_roots: self.latest_block_roots.clone(),
-            state_roots: self.latest_state_roots.clone(),
-        }
+    pub fn get_earlier_committee(&self) -> PeriodCommittee {
+        self.committees[0]
+    }
+
+    pub fn get_later_committee(&self) -> PeriodCommittee {
+        self.committees[1]
+    }
+
+    pub fn get_next_committee(&self) -> PeriodCommittee {
+        self.committees[2]
+    }
+
+    pub fn get_persistent_committee(&self) -> PersistentCommittee {
+        let earlier_committee = self.get_earlier_committee();
+        let later_committee = self.get_later_committee();
+
+        // finish logic here - fairly simple
     }
 
     /// Do we need this since the tree hash really is just the balance set of everyone?
