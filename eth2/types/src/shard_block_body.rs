@@ -6,7 +6,7 @@ use ssz_derive::{Decode, Encode};
 use test_random_derive::TestRandom;
 use tree_hash_derive::{CachedTreeHash, TreeHash};
 
-/// The body of a `BeaconChain` block, containing operations.
+/// The body of a `ShardChain` block, containing operations.
 ///
 /// Spec v0.6.3
 #[derive(
@@ -24,13 +24,13 @@ use tree_hash_derive::{CachedTreeHash, TreeHash};
 pub struct ShardBlockBody {
     #[serde(deserialize_with = "graffiti_from_hex_str")]
     pub graffiti: [u8; 32],
-    pub attestations: Vec<ShardAttestation>,
+    pub attestation: ShardAttestation,
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    ssz_tests!(BeaconBlockBody);
-    cached_tree_hash_tests!(BeaconBlockBody);
+    ssz_tests!(ShardBlockBody);
+    cached_tree_hash_tests!(ShardBlockBody);
 }
