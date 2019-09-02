@@ -1,5 +1,5 @@
 use crate::test_utils::TestRandom;
-use crate::{Epoch, Hash256};
+use crate::{Hash256, ShardSlot};
 
 use serde_derive::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
@@ -31,7 +31,7 @@ pub struct ShardAttestationData {
     pub shard_block_root: Hash256,
 
     // Need to indicate which slot the attestation is for
-    pub target_slot: Slot
+    pub target_slot: ShardSlot,
 }
 
 #[cfg(test)]

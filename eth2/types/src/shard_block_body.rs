@@ -26,11 +26,3 @@ pub struct ShardBlockBody {
     pub graffiti: [u8; 32],
     pub attestation: ShardAttestation,
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    ssz_tests!(ShardBlockBody);
-    cached_tree_hash_tests!(ShardBlockBody);
-}
