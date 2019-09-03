@@ -11,6 +11,7 @@
 //! may lead to programming errors which are not detected by the compiler.
 
 use crate::slot_height::{SlotHeight, ShardSlotHeight};
+use crate::period::Period;
 use crate::test_utils::TestRandom;
 use rand::RngCore;
 use serde_derive::{Deserialize, Serialize};

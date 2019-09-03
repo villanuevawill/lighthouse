@@ -1,5 +1,5 @@
 use crate::*;
-use fixed_len_vec::typenum::{Unsigned, U0, U1024, U64, U8, U8192};
+use fixed_len_vec::typenum::{Unsigned, U0, U1024, U64, U8, U8192, U256};
 use serde_derive::{Deserialize, Serialize};
 use std::fmt::Debug;
 
@@ -7,6 +7,7 @@ pub trait EthSpec: 'static + Default + Sync + Send + Clone + Debug + PartialEq {
     type ShardCount: Unsigned + Clone + Sync + Send + Debug + PartialEq;
     type SlotsPerHistoricalRoot: Unsigned + Clone + Sync + Send + Debug + PartialEq;
     type LatestRandaoMixesLength: Unsigned + Clone + Sync + Send + Debug + PartialEq;
+    type PeriodCommitteeRootsLength: Unsigned + Clone + Sync + Send + Debug + PartialEq;
     type LatestActiveIndexRootsLength: Unsigned + Clone + Sync + Send + Debug + PartialEq;
     type LatestSlashedExitLength: Unsigned + Clone + Sync + Send + Debug + PartialEq;
     /// Note: `SlotsPerEpoch` is not necessarily required to be a compile-time constant. We include
@@ -111,6 +112,7 @@ impl EthSpec for MainnetEthSpec {
     type ShardCount = U1024;
     type SlotsPerHistoricalRoot = U8192;
     type LatestRandaoMixesLength = U8192;
+    type PeriodCommitteeRootsLength = U256;
     type LatestActiveIndexRootsLength = U8192;
     type LatestSlashedExitLength = U8192;
     type SlotsPerEpoch = U64;
@@ -134,6 +136,7 @@ pub struct MinimalEthSpec;
 impl EthSpec for MinimalEthSpec {
     type ShardCount = U8;
     type SlotsPerHistoricalRoot = U64;
+    type PeriodCommitteeRootsLength = U64;
     type LatestRandaoMixesLength = U64;
     type LatestActiveIndexRootsLength = U64;
     type LatestSlashedExitLength = U64;
