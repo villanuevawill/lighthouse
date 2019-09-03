@@ -1,8 +1,8 @@
 use crate::*;
 
-#[derive(Default, Clone, Debug, PartialEq)]
+#[derive(Default, Clone, Debug, PartialEq, TreeHash, CachedTreeHash)]
 pub struct PeriodCommittee<'a> {
-    pub epoch: Epoch,
+    pub period: Period,
     pub shard: Shard,
     pub committee: &'a [usize],
 }
@@ -10,7 +10,7 @@ pub struct PeriodCommittee<'a> {
 impl<'a> PeriodCommittee<'a> {
     pub fn into_owned(self) -> OwnedPeriodCommittee {
         OwnedPeriodCommittee {
-            epoch: self.epoch,
+            period: self.period,
             shard: self.shard,
             committee: self.committee.to_vec(),
         }
@@ -19,7 +19,7 @@ impl<'a> PeriodCommittee<'a> {
 
 #[derive(Default, Clone, Debug, PartialEq)]
 pub struct OwnedPeriodCommittee {
-    pub epoch: Epoch,
+    pub period: Period,
     pub shard: Shard,
     pub committee: Vec<usize>,
 }
