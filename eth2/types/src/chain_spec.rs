@@ -78,6 +78,7 @@ pub struct ChainSpec {
     * Phase 1 specific values, fork epoch and slot are hardcoded to values for now
     */
     epochs_per_shard_period: u64,
+    period_committee_root_length: u64,
     phase_1_fork_epoch: u64,
     phase_1_fork_slot: u64,
 
@@ -194,6 +195,7 @@ impl ChainSpec {
              * Phase 1 specific values, fork epoch and slot are hardcoded to values for now
              */
             epochs_per_shard_period: 256,
+            period_committee_root_length: 256,
             phase_1_fork_epoch: 600,
             phase_1_fork_slot: 38_400,
 
