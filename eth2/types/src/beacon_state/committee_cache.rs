@@ -165,16 +165,6 @@ impl CommitteeCache {
         })
     }
 
-    pub fn get_period_committee_for_shard(&self, shard: Shard, committee_size: u64) -> Option<PeriodCommittee> {
-        let committee = self.get_crosslink_committee_for_shard(shard)?.committee;
-
-        Some(PeriodCommittee {
-            shard,
-            epoch: self.initialized_epoch?,
-            committee: &committee[..committee_size as usize],
-        })
-    }
-
     /// Returns the `AttestationDuty` for the given `validator_index`.
     ///
     /// Returns `None` if the `validator_index` does not exist, does not have duties or `Self` is

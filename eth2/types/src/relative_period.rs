@@ -27,7 +27,7 @@ impl RelativePeriod {
         }
     }
 
-    pub fn from_epoch(base: Period, other: Period) -> Result<Self, Error> {
+    pub fn from_period(base: Period, other: Period) -> Result<Self, Error> {
         if other == base {
             Ok(RelativePeriod::Current)
         } else if other == base - 1 {

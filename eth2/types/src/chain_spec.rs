@@ -157,6 +157,7 @@ impl ChainSpec {
              */
             target_committee_size: 128,
             target_period_committee_size: 128,
+            period_committee_root_length: 256,
             max_indices_per_attestation: 4096,
             min_per_epoch_churn_limit: 4,
             churn_limit_quotient: 65_536,
@@ -204,7 +205,6 @@ impl ChainSpec {
              * Phase 1 specific values, fork epoch and slot are hardcoded to values for now
              */
             epochs_per_shard_period: 256,
-            period_committee_root_length: 256,
             phase_1_fork_epoch: 600,
             phase_1_fork_slot: 38_400,
 
