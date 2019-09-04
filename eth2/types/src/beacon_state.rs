@@ -166,7 +166,7 @@ where
     #[ssz(skip_deserializing)]
     #[tree_hash(skip_hashing)]
     #[test_random(default)]
-    pub period_caches: [PeriodCommittee; 3],
+    pub period_caches: [PeriodCommitteeCache; 3],
 
     #[serde(default)]
     #[ssz(skip_serializing)]
@@ -253,9 +253,9 @@ impl<T: EthSpec> BeaconState<T> {
                 CommitteeCache::default(),
             ],
             period_caches: [
-                PeriodCommittee::default(),
-                PeriodCommittee::default(),
-                PeriodCommittee::default(),
+                PeriodCommitteeCache::default(),
+                PeriodCommitteeCache::default(),
+                PeriodCommitteeCache::default(),
             ],
             pubkey_cache: PubkeyCache::default(),
             exit_cache: ExitCache::default(),
@@ -435,7 +435,7 @@ impl<T: EthSpec> BeaconState<T> {
     pub fn get_period_committee(
         &self,
         relative_period: RelativePeriod,
-    ) -> &PeriodCommittee {
+    ) -> &PeriodCommitteeCache {
         &self.period_caches[self.period_index(relative_period)]
     }
 
