@@ -3,11 +3,9 @@ use crate::*;
 use serde_derive::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
 
-/// Computes and stores the shuffling for an epoch. Provides various getters to allow callers to
-/// read the committees for the given epoch.
 #[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize, Encode, Decode)]
 pub struct PeriodCommitteeCache {
-    committees: Vec<Vec<usize>>,
+    committees: Vec<PeriodCommittee>,
 }
 
 impl PeriodCommitteeCache {
@@ -22,11 +20,16 @@ impl PeriodCommitteeCache {
         }
 
         let shard_count = T::shard_count();
-        let mut committees = Vec::with_capacity(shard_count);
+        let mut committees: Vec<PeriodCommittee> = Vec::with_capacity(shard_count);
+
         for n in 0..shard_count {
-            committees.push(
-                state.get_crosslink_committee_for_shard(n as u64, RelativeEpoch::Current)?.committee[..spec.target_period_committee_size].to_vec()
-            );
+            let committee_indices = state.get_crosslink_committee_for_shard(n as u64, RelativeEpoch::Current)?.committee[..spec.target_period_committee_size].to_vec();
+            let period_committee = PeriodCommittee {
+                shard: n as u64,
+                period: current_epoch.period(spec.epochs_per_shard_period),
+                committee: committee_indices,
+            };
+            committees.push(period_committee);
         }
 
         Ok(PeriodCommitteeCache{committees})
