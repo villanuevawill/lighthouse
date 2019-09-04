@@ -2,7 +2,7 @@ use crate::*;
 use tree_hash_derive::{CachedTreeHash, TreeHash};
 use serde_derive::{Deserialize, Serialize};
 
-#[derive(Default, Clone, Debug, PartialEq, TreeHash, Serialize, Deserialize, CachedTreeHash)]
+#[derive(Default, Clone, Debug, PartialEq, TreeHash, CachedTreeHash)]
 pub struct PeriodCommittee<'a> {
     pub period: Period,
     pub shard: Shard,
@@ -12,7 +12,7 @@ pub struct PeriodCommittee<'a> {
 impl<'a> PeriodCommittee<'a> {
     pub fn into_owned(self) -> OwnedPeriodCommittee {
         OwnedPeriodCommittee {
-            slot: self.slot,
+            period: self.period,
             shard: self.shard,
             committee: self.committee.to_vec(),
         }
@@ -21,7 +21,7 @@ impl<'a> PeriodCommittee<'a> {
 
 #[derive(Default, Clone, Debug, PartialEq, TreeHash, CachedTreeHash)]
 pub struct OwnedPeriodCommittee {
-    pub slot: Slot,
+    pub period: Period,
     pub shard: Shard,
     pub committee: Vec<usize>,
 }
