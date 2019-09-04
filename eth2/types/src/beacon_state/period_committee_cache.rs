@@ -7,7 +7,7 @@ use ssz_derive::{Decode, Encode};
 /// read the committees for the given epoch.
 #[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize, Encode, Decode)]
 pub struct PeriodCommitteeCache {
-    pub committee: Vec<usize>,
+    committees: Vec<Vec<usize>>,
 }
 
 impl PeriodCommitteeCache {
@@ -21,7 +21,14 @@ impl PeriodCommitteeCache {
             return Err(Error::NoPeriodBoundary);
         }
 
-        let committee = state.get_crosslink_committee_for_shard(shard, RelativeEpoch::Current)?.committee[..spec.target_period_committee_size].to_vec();
-        Ok(PeriodCommitteeCache{committee})
+        let shard_count = T::shard_count();
+        let mut committees = Vec::with_capacity(shard_count);
+        for n in 0..shard_count {
+            committees.push(
+                state.get_crosslink_committee_for_shard(n as u64, RelativeEpoch::Current)?.committee[..spec.target_period_committee_size].to_vec()
+            );
+        }
+
+        Ok(PeriodCommitteeCache{committees})
     }
 }
