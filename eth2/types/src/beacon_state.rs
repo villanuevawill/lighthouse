@@ -15,11 +15,13 @@ use tree_hash::TreeHash;
 use tree_hash_derive::TreeHash;
 
 pub use self::committee_cache::CommitteeCache;
+pub use self::period_committee_cache::PeriodCommitteeCache;
 pub use beacon_state_types::*;
 
 #[macro_use]
 mod beacon_state_types;
 mod committee_cache;
+mod period_committee_cache;
 mod exit_cache;
 mod pubkey_cache;
 mod tests;
@@ -32,6 +34,7 @@ pub enum Error {
     EpochOutOfBounds,
     SlotOutOfBounds,
     ShardOutOfBounds,
+    NoPeriodBoundary,
     UnknownValidator,
     UnableToDetermineProducer,
     InvalidBitfield,
