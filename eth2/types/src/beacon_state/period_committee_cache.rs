@@ -22,7 +22,10 @@ impl PeriodCommitteeCache {
         let mut committees: Vec<PeriodCommittee> = Vec::with_capacity(shard_count);
 
         for n in 0..shard_count {
-            let committee_indices = state.get_crosslink_committee_for_shard(n as u64, RelativeEpoch::Current)?.committee[..spec.target_period_committee_size].to_vec();
+            let committee_indices = state
+                .get_crosslink_committee_for_shard(n as u64, RelativeEpoch::Current)?
+                .committee[..spec.target_period_committee_size]
+                .to_vec();
             let period_committee = PeriodCommittee {
                 shard: n as u64,
                 period: current_epoch.period(spec.epochs_per_shard_period),
@@ -31,12 +34,12 @@ impl PeriodCommitteeCache {
             committees.push(period_committee);
         }
 
-        Ok(PeriodCommitteeCache{committees})
+        Ok(PeriodCommitteeCache { committees })
     }
 
     pub fn get_period_committee(&self, shard: u64) -> Result<&PeriodCommittee, Error> {
         if (self.committees.len() - 1) < shard as usize {
-            return Err(Error::ShardOutOfBounds)
+            return Err(Error::ShardOutOfBounds);
         }
 
         Ok(&self.committees[shard as usize])
