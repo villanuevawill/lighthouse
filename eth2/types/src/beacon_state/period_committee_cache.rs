@@ -12,7 +12,6 @@ impl PeriodCommitteeCache {
     pub fn initialize<T: EthSpec>(
         state: &BeaconState<T>,
         spec: &ChainSpec,
-        shard: u64,
     ) -> Result<PeriodCommitteeCache, Error> {
         let current_epoch = state.current_epoch();
         if current_epoch % spec.epochs_per_shard_period != 0 {
@@ -33,5 +32,13 @@ impl PeriodCommitteeCache {
         }
 
         Ok(PeriodCommitteeCache{committees})
+    }
+
+    pub fn get_period_committee(&self, shard: u64) -> Result<&PeriodCommittee, Error> {
+        if (self.committees.len() - 1) < shard as usize {
+            return Err(Error::ShardOutOfBounds)
+        }
+
+        Ok(&self.committees[shard as usize])
     }
 }
