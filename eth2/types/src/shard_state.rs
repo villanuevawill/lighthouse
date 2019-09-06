@@ -132,14 +132,31 @@ impl<T: EthSpec> ShardState<T> {
         self.committees[2]
     }
 
-    pub fn get_persistent_committee(&self) -> PersistentCommittee {
+    pub fn compute_epoch_of_shard_slot(
+        &self,
+        slot: ShardSlot
+    ) -> Epoch {
+        ShardSlot::epoch
+    }
+
+    // updated this to match spec, not tested
+    pub fn get_persistent_committee(
+        &self
+        state: BeaconState,
+        shard: Shard,
+        slot: ShardSlot
+    ) -> PersistentCommittee {
+        let epoch = compute_epoch_of_shard_slot(slot);
         let earlier_committee = self.get_earlier_committee().to_owned().committee;
         let later_committee = self.get_later_committee().to_owned().committee;
 
-        let persistent_committee_indexes = {
-            // loop through properly
-        }
-        // finish logic here - fairly simple
+        let unioned_committees: Vec<_> = earlier_committee.iter()
+            .filter(|validator| epoch % EPOCHS_PER_SHARD_PERIOD < *validator % EPOCHS_PER_SHARD_PERIOD)
+            .chain(later_committee.iter()
+                   .filter(|validator| epoch % EPOCHS_PER_SHARD_PERIOD >= *validator % EPOCHS_PER_SHARD_PERIOD))
+            .collect();
+
+        union_committees.dedup()
     }
 
     /// Do we need this since the tree hash really is just the balance set of everyone?
