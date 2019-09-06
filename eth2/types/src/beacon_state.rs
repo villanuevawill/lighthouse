@@ -34,6 +34,7 @@ pub enum Error {
     EpochOutOfBounds,
     SlotOutOfBounds,
     ShardOutOfBounds,
+    PeriodOutOfBounds,
     NoPeriodBoundary,
     UnknownValidator,
     UnableToDetermineProducer,
@@ -438,19 +439,28 @@ impl<T: EthSpec> BeaconState<T> {
         epoch: Epoch,
         shard: u64,
     ) -> Result<ShardCommittee, Error> {
+        let spec = T::default_spec();
+        let current_epoch = self.current_epoch();
+        let current_period = current_epoch.period(spec.epochs_per_shard_period);
+        let target_period = epoch.period(spec.epochs_per_shard_period);
+
+        if target_period != current_period {
+            return Err(BeaconStateError::PeriodOutOfBounds);
+        }
+
         let earlier_committee = &self.get_period_committee(RelativePeriod::Previous, shard)?.committee;
         let later_committee = &self.get_period_committee(RelativePeriod::Current, shard)?.committee;
 
         let mut union = Vec::new();
 
         for &member in earlier_committee {
-            if member as u64 % T::default_spec().epochs_per_shard_period < member as u64 % T::default_spec().epochs_per_shard_period {
+            if member as u64 % spec.epochs_per_shard_period < member as u64 % spec.epochs_per_shard_period {
                 union.push(member);
             }
         }
 
         for &member in later_committee {
-            if member as u64 % T::default_spec().epochs_per_shard_period >= member as u64 % T::default_spec().epochs_per_shard_period {
+            if member as u64 % spec.epochs_per_shard_period >= member as u64 % spec.epochs_per_shard_period {
                 union.push(member);
             }
         }
@@ -464,11 +474,44 @@ impl<T: EthSpec> BeaconState<T> {
         })
     }
 
-    // pub fn get_shard_proposer_index(
-    //     &self,
-    //     epoch,
-    //     shard,
-    // )
+    pub fn get_shard_proposer_index(
+        &self,
+        epoch: Epoch,
+        shard: u64,
+        slot: ShardSlot,
+    ) -> Result<usize, Error> {
+        let spec = T::default_spec();
+        let current_epoch = self.current_epoch();
+        let current_period = current_epoch.period(spec.epochs_per_shard_period);
+        let target_period = epoch.period(spec.epochs_per_shard_period);
+
+        if target_period != current_period {
+            return Err(BeaconStateError::PeriodOutOfBounds);
+        }
+
+        let seed = self.generate_seed(epoch, &spec)?;
+        let committee = self.get_shard_committee(epoch, shard)?.committee;
+
+        let mut i = 0;
+        Ok(loop {
+            let candidate_index = committee[(slot.as_usize() + i) % committee.len()];
+            let random_byte = {
+                let mut preimage = seed.as_bytes().to_vec();
+                preimage.append(&mut int_to_bytes8((i / 32) as u64));
+                preimage.append(&mut int_to_bytes8(shard));
+                preimage.append(&mut int_to_bytes8(slot.into()));
+                let hash = hash(&preimage);
+                hash[i % 32]
+            };
+            let effective_balance = self.validator_registry[candidate_index].effective_balance;
+            if (effective_balance * MAX_RANDOM_BYTE)
+                >= (spec.max_effective_balance * u64::from(random_byte))
+            {
+                break candidate_index;
+            }
+            i += 1;
+        })
+    }
 
     /// Returns the beacon proposer index for the `slot` in the given `relative_epoch`.
     ///
