@@ -137,8 +137,8 @@ impl EthSpec for MinimalEthSpec {
     type ShardCount = U8;
     type SlotsPerHistoricalRoot = U64;
     type PeriodCommitteeRootsLength = U64;
-    type LatestRandaoMixesLength = U64;
-    type LatestActiveIndexRootsLength = U64;
+    type LatestRandaoMixesLength = U1024;
+    type LatestActiveIndexRootsLength = U1024;
     type LatestSlashedExitLength = U64;
     type SlotsPerEpoch = U8;
     type GenesisEpoch = U0;
