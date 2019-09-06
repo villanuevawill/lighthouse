@@ -428,9 +428,47 @@ impl<T: EthSpec> BeaconState<T> {
     pub fn get_period_committee(
         &self,
         relative_period: RelativePeriod,
-    ) -> &PeriodCommitteeCache {
-        &self.period_caches[self.period_index(relative_period)]
+        shard: u64,
+    ) -> Result<&PeriodCommittee, Error> {
+        self.period_caches[self.period_index(relative_period)].get_period_committee(shard)
     }
+
+    pub fn get_shard_committee(
+        &self,
+        epoch: Epoch,
+        shard: u64,
+    ) -> Result<ShardCommittee, Error> {
+        let earlier_committee = &self.get_period_committee(RelativePeriod::Previous, shard)?.committee;
+        let later_committee = &self.get_period_committee(RelativePeriod::Current, shard)?.committee;
+
+        let mut union = Vec::new();
+
+        for &member in earlier_committee {
+            if member as u64 % T::default_spec().epochs_per_shard_period < member as u64 % T::default_spec().epochs_per_shard_period {
+                union.push(member);
+            }
+        }
+
+        for &member in later_committee {
+            if member as u64 % T::default_spec().epochs_per_shard_period >= member as u64 % T::default_spec().epochs_per_shard_period {
+                union.push(member);
+            }
+        }
+
+        union.dedup();
+
+        Ok(ShardCommittee{
+            epoch: epoch,
+            shard: shard,
+            committee: union,
+        })
+    }
+
+    // pub fn get_shard_proposer_index(
+    //     &self,
+    //     epoch,
+    //     shard,
+    // )
 
     /// Returns the beacon proposer index for the `slot` in the given `relative_epoch`.
     ///
