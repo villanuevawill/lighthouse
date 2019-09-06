@@ -24,7 +24,6 @@ use tree_hash_derive::{CachedTreeHash, TreeHash};
 pub struct ShardPendingAttestation {
     pub aggregation_bitfield: Bitfield,
     pub data: ShardAttestationData,
-    pub inclusion_delay: u64,
     pub proposer_index: u64,
 }
 
