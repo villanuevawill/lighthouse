@@ -21,8 +21,8 @@ pub use beacon_state_types::*;
 
 mod beacon_state_types;
 mod committee_cache;
-mod period_committee_cache;
 mod exit_cache;
+mod period_committee_cache;
 mod pubkey_cache;
 mod tests;
 
@@ -199,7 +199,8 @@ impl<T: EthSpec> BeaconState<T> {
             // Update to proper variables
             period_committee_roots: FixedLenVec::from(vec![
                 spec.zero_hash;
-                T::PeriodCommitteeRootsLength::to_usize()
+                T::PeriodCommitteeRootsLength::to_usize(
+                )
             ]),
 
             // Finality
@@ -415,10 +416,7 @@ impl<T: EthSpec> BeaconState<T> {
         Ok(committee)
     }
 
-    pub fn period_index(
-        &self,
-        relative_period: RelativePeriod,
-    ) -> usize {
+    pub fn period_index(&self, relative_period: RelativePeriod) -> usize {
         match relative_period {
             RelativePeriod::Previous => 0,
             RelativePeriod::Current => 1,
@@ -434,40 +432,53 @@ impl<T: EthSpec> BeaconState<T> {
         self.period_caches[self.period_index(relative_period)].get_period_committee(shard)
     }
 
-    pub fn get_shard_committee(
-        &self,
-        epoch: Epoch,
-        shard: u64,
-    ) -> Result<ShardCommittee, Error> {
+    pub fn get_shard_committee(&self, epoch: Epoch, shard: u64) -> Result<ShardCommittee, Error> {
         let spec = T::default_spec();
+
+        // retrieve current epoch
         let current_epoch = self.current_epoch();
+
+        // retrieve current period using `current_epoch`
         let current_period = current_epoch.period(spec.epochs_per_shard_period);
         let target_period = epoch.period(spec.epochs_per_shard_period);
 
+        // if target_period is not current_period, return an error
         if target_period != current_period {
             return Err(BeaconStateError::PeriodOutOfBounds);
         }
 
-        let earlier_committee = &self.get_period_committee(RelativePeriod::Previous, shard)?.committee;
-        let later_committee = &self.get_period_committee(RelativePeriod::Current, shard)?.committee;
+        // retrieve current/later_committee, straightforward using `RelativePeriod::`
+        let earlier_committee = &self
+            .get_period_committee(RelativePeriod::Previous, shard)?
+            .committee;
+        let later_committee = &self
+            .get_period_committee(RelativePeriod::Current, shard)?
+            .committee;
 
-        let mut union = Vec::new();
-
-        for &member in earlier_committee {
-            if member as u64 % spec.epochs_per_shard_period < member as u64 % spec.epochs_per_shard_period {
-                union.push(member);
-            }
-        }
-
-        for &member in later_committee {
-            if member as u64 % spec.epochs_per_shard_period >= member as u64 % spec.epochs_per_shard_period {
-                union.push(member);
-            }
-        }
+        // double referencing, why?
+        // NOTE: making a copy here?
+        // NOTE: does lighthouse typically use iterators?
+        // NOTE: look at op_pool and lmd_ghost iterator class in store to see how they are
+        // currenlty doing this
+        // NOTE: shard slot tests, shard_committee tests, other tests for phase 1 structs we
+        // added
+        let mut union: Vec<usize> = earlier_committee
+            .iter()
+            .filter(|member| {
+                current_epoch % spec.epochs_per_shard_period
+                    < **member as u64 % spec.epochs_per_shard_period
+            })
+            .chain(later_committee.iter().filter(|member| {
+                current_epoch % spec.epochs_per_shard_period
+                    >= **member as u64 % spec.epochs_per_shard_period
+            }))
+            // clone method is used so we don't have to dereference anything
+            .cloned()
+            .collect::<Vec<usize>>();
 
         union.dedup();
 
-        Ok(ShardCommittee{
+        Ok(ShardCommittee {
             epoch: epoch,
             shard: shard,
             committee: union,
@@ -490,9 +501,26 @@ impl<T: EthSpec> BeaconState<T> {
         }
 
         let seed = self.generate_seed(epoch, &spec)?;
+
         let committee = self.get_shard_committee(epoch, shard)?.committee;
 
+        // we are going to need to call `is_active_validator()` here
+        let active_indices: Vec<_> = committee
+            .iter()
+            .filter(|validator| validator.is_active_at(current_epoch))
+            .collect();
+
         let mut i = 0;
+
+        // let temp: Vec<u64> = committee.iter()
+        //     .filter(|member| )
+
+        // where is `active_indices` in the below? I understand the reasoning for the loop
+        //
+        // presumably, we use a filter iterator here
+
+        // let block_proposer: Vec<u64> = active_indices();
+
         Ok(loop {
             let candidate_index = committee[(slot.as_usize() + i) % committee.len()];
             let random_byte = {
