@@ -1,35 +1,21 @@
 mod attestation_id;
-mod persistence;
-
-pub use persistence::PersistedOperationPool;
 
 use attestation_id::AttestationId;
 use itertools::Itertools;
 use parking_lot::RwLock;
-use state_processing::per_block_processing::{
-    get_slashable_indices_modular, validate_attestation,
-    validate_attestation_time_independent_only, verify_attester_slashing, verify_exit,
-    verify_exit_time_independent_only, verify_proposer_slashing, verify_transfer,
-    verify_transfer_time_independent_only,
-};
 use std::collections::{btree_map::Entry, hash_map, BTreeMap, HashMap, HashSet};
 use std::marker::PhantomData;
 use types::{
-    Attestation, BeaconState, ShardState, ChainSpec, EthSpec, Validator
+    ShardAttestation, ShardState, ChainSpec, EthSpec, Validator
 };
 
 #[derive(Default, Debug)]
-pub struct OperationPool<T: EthSpec + Default> {
-    /// Map from attestation ID (see below) to vectors of attestations.
-    attestations: RwLock<HashMap<AttestationId, Vec<Attestation>>>,
-    // NOTE: We assume that there is only one deposit per index
-    // because the Eth1 data is updated (at most) once per epoch,
-    // and the spec doesn't seem to accomodate for re-orgs on a time-frame
-    // longer than an epoch
+pub struct ShardOperationPool<T: EthSpec + Default> {
+    attestations: RwLock<HashMap<AttestationId, Vec<ShardAttestation>>>,
     _phantom: PhantomData<T>,
 }
 
-impl<T: EthSpec> OperationPool<T> {
+impl<T: EthSpec> ShardOperationPool<T> {
     /// Create a new operation pool.
     pub fn new() -> Self {
         Self::default()
@@ -38,7 +24,7 @@ impl<T: EthSpec> OperationPool<T> {
     /// Insert an attestation into the pool, aggregating it with existing attestations if possible.
     pub fn insert_attestation(
         &self,
-        attestation: Attestation,
+        attestation: ShardAttestation,
         state: &ShardState<T>,
         spec: &ChainSpec,
     ) -> () {
@@ -78,7 +64,7 @@ impl<T: EthSpec> OperationPool<T> {
     }
 
     /// Get a list of attestations for inclusion in a block.
-    pub fn get_attestations(&self, state: &ShardState<T>, spec: &ChainSpec) -> Vec<Attestation> {
+    pub fn get_attestations(&self, state: &ShardState<T>, spec: &ChainSpec) -> Vec<ShardAttestation> {
         // Attestations for the current fork, which may be from the current or previous epoch.
         let current_slot = state.slot();
         let domain_bytes = AttestationId::compute_domain_bytes(epoch, state, spec);
@@ -89,23 +75,15 @@ impl<T: EthSpec> OperationPool<T> {
             .flat_map(|(_, attestations)| attestations);
     }
 
-    /// Remove attestations which are too old to be included in a block.
-    pub fn prune_attestations(&self, finalized_state: &BeaconState<T>) {
-        // We know we can include an attestation if:
-        // state.slot <= attestation_slot + SLOTS_PER_EPOCH
-        // We approximate this check using the attestation's epoch, to avoid computing
-        // the slot or relying on the committee cache of the finalized state.
+    pub fn prune_attestations(&self, finalized_state: &ShardState<T>) {
         self.attestations.write().retain(|_, attestations| {
-            // All the attestations in this bucket have the same data, so we only need to
-            // check the first one.
             attestations.first().map_or(false, |att| {
-                finalized_state.current_epoch() <= att.data.target_epoch + 1
+                finalized_state.current_slot() <= att.data.target_slot
             })
         });
     }
 }
 
-/// Filter up to a maximum number of operations out of an iterator.
 fn filter_limit_operations<'a, T: 'a, I, F>(operations: I, filter: F, limit: u64) -> Vec<T>
 where
     I: IntoIterator<Item = &'a T>,
@@ -120,7 +98,6 @@ where
         .collect()
 }
 
-/// Compare two operation pools.
-impl<T: EthSpec + Default> PartialEq for OperationPool<T> {
+impl<T: EthSpec + Default> PartialEq for ShardOperationPool<T> {
     fn eq(&self, other: &Self) -> bool { *self.attestations.read() == *other.attestations.read()}
 }
