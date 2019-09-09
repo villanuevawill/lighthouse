@@ -31,7 +31,7 @@ pub struct ShardAttestation {
     pub signature: AggregateSignature,
 }
 
-impl Attestation {
+impl ShardAttestation {
     /// Are the aggregation bitfields of these attestations disjoint?
     pub fn signers_disjoint_from(&self, other: &ShardAttestation) -> bool {
         self.aggregation_bitfield
