@@ -14,23 +14,23 @@ const DOMAIN_BYTES_LEN: usize = 16;
 
 impl AttestationId {
     pub fn from_data<T: EthSpec>(
-        attestation: &AttestationData,
+        attestation: &ShardAttestationData,
         state: &ShardState<T>,
         spec: &ChainSpec,
     ) -> Self {
         let mut bytes = ssz_encode(attestation);
-        let epoch = attestation.target_epoch;
-        bytes.extend_from_slice(&AttestationId::compute_domain_bytes(epoch, state, spec));
+        let slot = attestation.target_slot;
+        let epoch = slot.epoch();
+        bytes.extend_from_slice(&AttestationId::compute_domain_bytes(epoch, slot, state, spec));
         AttestationId { v: bytes }
     }
 
     pub fn compute_domain_bytes<T: EthSpec>(
         epoch: Epoch,
+        slot: ShardSlot,
         state: &ShardState<T>,
         spec: &ChainSpec,
-        slot: Slot
     ) -> Vec<u8> {
-        // also pseudocoded here
         int_to_bytes8(spec.get_domain(epoch, Domain::Attestation, &state.fork)) + int_to_bytes8(slot)
     }
 
