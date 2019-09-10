@@ -32,10 +32,10 @@ pub struct ShardBlock {
 }
 
 impl ShardBlock {
-    pub fn empty(spec: &ChainSpec, shard: u64) -> BeaconBlock {
+    pub fn empty(spec: &ChainSpec, shard: u64) -> ShardBlock {
         ShardBlock {
             shard,
-            slot: spec.phase_1_fork_slot as ShardSlot,
+            slot: ShardSlot::from(spec.phase_1_fork_slot),
             previous_block_root: spec.zero_hash,
             state_root: spec.zero_hash,
             attestation: ShardAttestation::default(),
@@ -51,9 +51,10 @@ impl ShardBlock {
         ShardBlockHeader {
             shard: self.shard,
             slot: self.slot,
+            beacon_block_root: Hash256::default(),
             previous_block_root: self.previous_block_root,
             state_root: self.state_root,
-            block_body_root: Hash256::from_slice(&self.body.tree_hash_root()[..]),
+            body_root: Hash256::default(),
             signature: self.signature.clone(),
         }
     }
