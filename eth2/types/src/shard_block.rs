@@ -35,7 +35,7 @@ impl ShardBlock {
     pub fn empty(spec: &ChainSpec, shard: u64) -> BeaconBlock {
         ShardBlock {
             shard,
-            slot: spec.phase_1_fork_slot,
+            slot: spec.phase_1_fork_slot as ShardSlot,
             previous_block_root: spec.zero_hash,
             state_root: spec.zero_hash,
             attestation: ShardAttestation::default(),
