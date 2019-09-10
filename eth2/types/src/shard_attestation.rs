@@ -12,6 +12,7 @@ use tree_hash_derive::{CachedTreeHash, SignedRoot, TreeHash};
 /// Spec v0.6.3
 #[derive(
     Debug,
+    Default,
     Clone,
     PartialEq,
     Serialize,
