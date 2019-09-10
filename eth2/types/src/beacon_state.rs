@@ -507,7 +507,7 @@ impl<T: EthSpec> BeaconState<T> {
         // we are going to need to call `is_active_validator()` here
         let active_indices: Vec<_> = committee
             .iter()
-            .filter(|validator| validator.is_active_at(current_epoch))
+            .filter(|validator| validator.is_active_at(&current_epoch))
             .collect();
 
         let mut i = 0;
