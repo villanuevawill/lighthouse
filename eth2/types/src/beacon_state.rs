@@ -447,7 +447,6 @@ impl<T: EthSpec> BeaconState<T> {
             return Err(BeaconStateError::PeriodOutOfBounds);
         }
 
-        // retrieve current/later_committee, straightforward using `RelativePeriod::`
         let earlier_committee = &self
             .get_period_committee(RelativePeriod::Previous, shard)?
             .committee;
@@ -501,28 +500,13 @@ impl<T: EthSpec> BeaconState<T> {
         }
 
         let seed = self.generate_seed(epoch, &spec)?;
-
         let committee = self.get_shard_committee(epoch, shard)?.committee;
-
-        // we are going to need to call `is_active_validator()` here
-        let active_indices: Vec<_> = committee
-            .iter()
-            .filter(|validator| validator.is_active_at(&current_epoch))
-            .collect();
+        let active_indices = self.get_active_validator_indices(current_epoch);
 
         let mut i = 0;
 
-        // let temp: Vec<u64> = committee.iter()
-        //     .filter(|member| )
-
-        // where is `active_indices` in the below? I understand the reasoning for the loop
-        //
-        // presumably, we use a filter iterator here
-
-        // let block_proposer: Vec<u64> = active_indices();
-
         Ok(loop {
-            let candidate_index = committee[(slot.as_usize() + i) % committee.len()];
+            let candidate_index = active_indices[(slot.as_usize() + i) % committee.len()];
             let random_byte = {
                 let mut preimage = seed.as_bytes().to_vec();
                 preimage.append(&mut int_to_bytes8((i / 32) as u64));
@@ -531,12 +515,15 @@ impl<T: EthSpec> BeaconState<T> {
                 let hash = hash(&preimage);
                 hash[i % 32]
             };
+
             let effective_balance = self.validator_registry[candidate_index].effective_balance;
+
             if (effective_balance * MAX_RANDOM_BYTE)
                 >= (spec.max_effective_balance * u64::from(random_byte))
             {
                 break candidate_index;
             }
+
             i += 1;
         })
     }

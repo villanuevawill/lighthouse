@@ -32,7 +32,7 @@ pub struct ShardBlock {
 }
 
 impl ShardBlock {
-    pub fn empty(spec: &ChainSpec, shard: u64) -> BeaconBlock {
+    pub fn empty(spec: &ChainSpec, shard: u64) -> ShardBlock {
         ShardBlock {
             shard,
             slot: spec.phase_1_fork_slot,

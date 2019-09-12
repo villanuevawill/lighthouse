@@ -89,10 +89,7 @@ impl<T: EthSpec> ShardState<T> {
     /// deposits. To obtain a full genesis shard state, use the `ShardStateBuilder`.
     ///
     /// Spec v0.6.3
-    pub fn genesis(
-        genesis_time: u64,
-        spec: &ChainSpec,
-    ) -> ShardState<T> {
+    pub fn genesis(genesis_time: u64, spec: &ChainSpec) -> ShardState<T> {
         ShardState {
             // Misc
             slot: spec.genesis_slot,
@@ -132,31 +129,8 @@ impl<T: EthSpec> ShardState<T> {
         self.committees[2]
     }
 
-    pub fn compute_epoch_of_shard_slot(
-        &self,
-        slot: ShardSlot
-    ) -> Epoch {
+    pub fn compute_epoch_of_shard_slot(&self, slot: ShardSlot) -> Epoch {
         ShardSlot::epoch
-    }
-
-    // updated this to match spec, not tested
-    pub fn get_persistent_committee(
-        &self
-        state: BeaconState,
-        shard: Shard,
-        slot: ShardSlot
-    ) -> PersistentCommittee {
-        let epoch = compute_epoch_of_shard_slot(slot);
-        let earlier_committee = self.get_earlier_committee().to_owned().committee;
-        let later_committee = self.get_later_committee().to_owned().committee;
-
-        let unioned_committees: Vec<_> = earlier_committee.iter()
-            .filter(|validator| epoch % EPOCHS_PER_SHARD_PERIOD < *validator % EPOCHS_PER_SHARD_PERIOD)
-            .chain(later_committee.iter()
-                   .filter(|validator| epoch % EPOCHS_PER_SHARD_PERIOD >= *validator % EPOCHS_PER_SHARD_PERIOD))
-            .collect();
-
-        union_committees.dedup()
     }
 
     /// Do we need this since the tree hash really is just the balance set of everyone?
