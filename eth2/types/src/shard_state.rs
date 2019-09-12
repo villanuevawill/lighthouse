@@ -8,6 +8,7 @@ use ssz::ssz_encode;
 use ssz_derive::{Decode, Encode};
 use test_random_derive::TestRandom;
 use tree_hash::TreeHash;
+use std::marker::PhantomData;
 use tree_hash_derive::{CachedTreeHash, TreeHash};
 
 #[derive(Debug, PartialEq)]
@@ -28,7 +29,10 @@ pub enum Error {
     CachedTreeHash,
     CompareFields,
 )]
-pub struct ShardState{
+pub struct ShardState<T>
+where
+    T: EthSpec,
+{
     pub shard: u64,
     pub slot: ShardSlot,
 
@@ -38,17 +42,25 @@ pub struct ShardState{
     #[tree_hash(skip_hashing)]
     #[test_random(default)]
     pub tree_hash_cache: TreeHashCache,
+
+    #[serde(skip_serializing, skip_deserializing)]
+    #[ssz(skip_serializing)]
+    #[ssz(skip_deserializing)]
+    #[tree_hash(skip_hashing)]
+    #[test_random(default)]
+    _phantom: PhantomData<T>,
 }
 
-impl ShardState {
+impl<T: EthSpec> ShardState<T> {
     pub fn genesis(
         spec: &ChainSpec,
         shard: u64,
-    ) -> ShardState {
+    ) -> ShardState<T> {
         ShardState {
             shard,
             slot: ShardSlot::from(spec.phase_1_fork_slot),
             tree_hash_cache: TreeHashCache::default(),
+            _phantom: PhantomData,
         }
     }
 

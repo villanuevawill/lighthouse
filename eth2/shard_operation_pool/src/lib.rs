@@ -6,7 +6,7 @@ use parking_lot::RwLock;
 use std::collections::{btree_map::Entry, hash_map, BTreeMap, HashMap, HashSet};
 use std::marker::PhantomData;
 use types::{
-    ShardAttestation, ShardState, ChainSpec, EthSpec, Validator
+    BeaconState, ShardAttestation, ShardSlot, ShardState, ChainSpec, EthSpec, Validator
 };
 
 #[derive(Default, Debug)]
@@ -25,10 +25,10 @@ impl<T: EthSpec> ShardOperationPool<T> {
     pub fn insert_attestation(
         &self,
         attestation: ShardAttestation,
-        state: &ShardState<T>,
+        beacon_state: &BeaconState<T>,
         spec: &ChainSpec,
     ) -> () {
-        let id = AttestationId::from_data(&attestation.data, state, spec);
+        let id = AttestationId::from_data(&attestation.data, beacon_state, spec);
 
         // Take a write lock on the attestations map.
         let mut attestations = self.attestations.write();
@@ -36,7 +36,7 @@ impl<T: EthSpec> ShardOperationPool<T> {
         let existing_attestations = match attestations.entry(id) {
             hash_map::Entry::Vacant(entry) => {
                 entry.insert(vec![attestation]);
-                return Ok(());
+                return ();
             }
             hash_map::Entry::Occupied(entry) => entry.into_mut(),
         };
@@ -55,7 +55,7 @@ impl<T: EthSpec> ShardOperationPool<T> {
             existing_attestations.push(attestation);
         }
 
-        Ok(())
+        ()
     }
 
     /// Total number of attestations in the pool, including attestations for the same data.
@@ -64,21 +64,27 @@ impl<T: EthSpec> ShardOperationPool<T> {
     }
 
     /// Get a list of attestations for inclusion in a block.
-    pub fn get_attestations(&self, state: &ShardState<T>, spec: &ChainSpec) -> Vec<ShardAttestation> {
-        // Attestations for the current fork, which may be from the current or previous epoch.
-        let current_slot = state.slot();
-        let domain_bytes = AttestationId::compute_domain_bytes(epoch, state, spec);
+    pub fn get_attestations(&self, state: &ShardState<T>, beacon_state: &BeaconState<T>, spec: &ChainSpec) -> Vec<ShardAttestation> {
+        // enforce the right beacon state is being passed through
+        let attesting_slot = ShardSlot::from(state.slot - 1);
+        let epoch = attesting_slot.epoch(spec.slots_per_epoch, spec.shard_slots_per_beacon_slot);
+        let domain_bytes = AttestationId::compute_domain_bytes(epoch, attesting_slot, beacon_state, spec);
         let reader = self.attestations.read();
-        let valid_attestations = reader
+
+        let attestations: Vec<ShardAttestation> = reader
             .iter()
             .filter(|(key, _)| key.domain_bytes_match(&domain_bytes))
-            .flat_map(|(_, attestations)| attestations);
+            .flat_map(|(_, attestations)| attestations)
+            .cloned()
+            .collect();
+
+        attestations
     }
 
     pub fn prune_attestations(&self, finalized_state: &ShardState<T>) {
         self.attestations.write().retain(|_, attestations| {
             attestations.first().map_or(false, |att| {
-                finalized_state.current_slot() <= att.data.target_slot
+                finalized_state.slot <= att.data.target_slot
             })
         });
     }
