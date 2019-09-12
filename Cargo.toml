@@ -35,6 +35,7 @@ members = [
 	"beacon_node/version",
 	"beacon_node/beacon_chain",
 	"beacon_node/websocket_server",
+	"shard_node/shard_store",
 	"tests/ef_tests",
 	"lcli",
 	"protos",

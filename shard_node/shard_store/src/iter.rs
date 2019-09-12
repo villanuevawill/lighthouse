@@ -11,7 +11,7 @@ pub struct StateRootsIterator<'a, T: EthSpec, U> {
 }
 
 impl<'a, T: EthSpec, U: Store> StateRootsIterator<'a, T, U> {
-    pub fn new(store: Arc<U>, shard_state: &'a ShardState<T>, start_slot: Slot) -> Self {
+    pub fn new(store: Arc<U>, shard_state: &'a ShardState<T>, start_slot: ShardSlot) -> Self {
         Self {
             store,
             shard_state: Cow::Borrowed(shard_state),
@@ -19,7 +19,7 @@ impl<'a, T: EthSpec, U: Store> StateRootsIterator<'a, T, U> {
         }
     }
 
-    pub fn owned(store: Arc<U>, beacon_state: BeaconState<T>, start_slot: Slot) -> Self {
+    pub fn owned(store: Arc<U>, shard_state: ShardState<T>, start_slot: ShardSlot) -> Self {
         Self {
             store,
             shard_state: Cow::Owned(shard_state),
@@ -29,7 +29,7 @@ impl<'a, T: EthSpec, U: Store> StateRootsIterator<'a, T, U> {
 }
 
 impl<'a, T: EthSpec, U: Store> Iterator for StateRootsIterator<'a, T, U> {
-    type Item = (Hash256, Slot);
+    type Item = (Hash256, ShardSlot);
 
     fn next(&mut self) -> Option<Self::Item> {
         if (self.slot == 0) || (self.slot > self.shard_state.slot) {
@@ -157,7 +157,7 @@ pub struct BestBlockRootsIterator<'a, T: EthSpec, U> {
 }
 
 impl<'a, T: EthSpec, U: Store> BestBlockRootsIterator<'a, T, U> {
-    pub fn new(store: Arc<U>, beacon_state: &'a ShardState<T>, start_slot: ShardSlot) -> Self {
+    pub fn new(store: Arc<U>, shard_state: &'a ShardState<T>, start_slot: ShardSlot) -> Self {
         let mut slot = start_slot;
         if slot >= shard_state.slot {
             // Slot may be too high.
