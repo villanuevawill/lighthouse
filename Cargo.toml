@@ -34,6 +34,7 @@ members = [
     "beacon_node/rpc",
 	"beacon_node/version",
 	"beacon_node/beacon_chain",
+	"shard_node/shard_store",
 	"tests/ef_tests",
 	"protos",
 	"validator_client",
