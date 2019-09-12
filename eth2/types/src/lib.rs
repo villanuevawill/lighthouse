@@ -31,6 +31,7 @@ pub mod shard_attestation_data;
 pub mod shard_block;
 pub mod shard_block_header;
 pub mod shard_pending_attestation;
+pub mod shard_state;
 pub mod transfer;
 pub mod voluntary_exit;
 #[macro_use]
@@ -76,6 +77,7 @@ pub use crate::shard_attestation_data::ShardAttestationData;
 pub use crate::shard_block::ShardBlock;
 pub use crate::shard_block_header::ShardBlockHeader;
 pub use crate::shard_pending_attestation::ShardPendingAttestation;
+pub use crate::shard_state::ShardState;
 pub use crate::slot_epoch::{Epoch, Slot, ShardSlot};
 pub use crate::slot_height::{SlotHeight, ShardSlotHeight};
 pub use crate::transfer::Transfer;
