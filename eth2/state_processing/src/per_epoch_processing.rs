@@ -59,6 +59,8 @@ pub fn per_epoch_processing<T: EthSpec>(
     // Slashings.
     process_slashings(state, validator_statuses.total_balances.current_epoch, spec)?;
 
+    // process_period_committee(state)?;
+
     // Final updates.
     process_final_updates(state, spec)?;
 
