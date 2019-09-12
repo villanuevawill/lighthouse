@@ -23,6 +23,7 @@ use tree_hash_derive::{CachedTreeHash, SignedRoot, TreeHash};
 )]
 pub struct ShardBlockHeader {
     pub slot: ShardSlot,
+    pub shard: u64,
     pub previous_block_root: Hash256,
     pub beacon_block_root: Hash256,
     pub state_root: Hash256,
