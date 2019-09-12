@@ -2,6 +2,7 @@
 members = [
 	"eth2/lmd_ghost",
 	"eth2/operation_pool",
+	"eth2/shard_operation_pool",
 	"eth2/state_processing",
 	"eth2/types",
 	"eth2/utils/bls",

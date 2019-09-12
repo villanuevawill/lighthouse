@@ -75,6 +75,12 @@ pub struct ChainSpec {
     pub min_epochs_to_inactivity_penalty: u64,
 
     /*
+    * Additional Time Parameters
+    */
+    pub slots_per_epoch: u64,
+    pub shard_slots_per_beacon_slot: u64,
+
+    /*
     * Phase 1 specific values, fork epoch and slot are hardcoded to values for now
     */
     pub epochs_per_shard_period: u64,
@@ -202,6 +208,12 @@ impl ChainSpec {
             min_epochs_to_inactivity_penalty: 4,
 
             /*
+            * Additional Time Parameters
+            */
+            slots_per_epoch: 64,
+            shard_slots_per_beacon_slot: 2,
+
+            /*
              * Phase 1 specific values, fork epoch and slot are hardcoded to values for now
              */
             epochs_per_shard_period: 256,
@@ -267,6 +279,7 @@ impl ChainSpec {
             genesis_slot,
             chain_id: 2, // lighthouse testnet chain id
             boot_nodes,
+            slots_per_epoch: 8,
             ..ChainSpec::mainnet()
         }
     }
