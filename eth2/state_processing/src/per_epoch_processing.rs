@@ -1,5 +1,6 @@
 use apply_rewards::process_rewards_and_penalties;
 use errors::EpochProcessingError as Error;
+use process_period_committee::process_period_committee;
 use process_slashings::process_slashings;
 use registry_updates::process_registry_updates;
 use std::collections::HashMap;
@@ -10,6 +11,7 @@ use winning_root::{winning_root, WinningRoot};
 
 pub mod apply_rewards;
 pub mod errors;
+pub mod process_period_committee;
 pub mod process_slashings;
 pub mod registry_updates;
 pub mod tests;
@@ -61,7 +63,8 @@ pub fn per_epoch_processing<T: EthSpec>(
     // Slashings.
     process_slashings(state, validator_statuses.total_balances.current_epoch, spec)?;
 
-    // process_period_committee(state)?;
+    // Set period committees
+    process_period_committee(state, spec)?;
 
     // Final updates.
     process_final_updates(state, spec)?;

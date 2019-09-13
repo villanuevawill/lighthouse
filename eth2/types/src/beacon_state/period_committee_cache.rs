@@ -5,7 +5,7 @@ use ssz_derive::{Decode, Encode};
 
 #[derive(Debug, Default, PartialEq, Clone, Serialize, Deserialize, Encode, Decode)]
 pub struct PeriodCommitteeCache {
-    committees: Vec<PeriodCommittee>,
+    pub committees: Vec<PeriodCommittee>,
 }
 
 impl PeriodCommitteeCache {
@@ -14,7 +14,7 @@ impl PeriodCommitteeCache {
         spec: &ChainSpec,
     ) -> Result<PeriodCommitteeCache, Error> {
         let current_epoch = state.current_epoch();
-        if current_epoch % spec.epochs_per_shard_period != 0 {
+        if (current_epoch + 1) % spec.epochs_per_shard_period != 0 {
             return Err(Error::NoPeriodBoundary);
         }
 
