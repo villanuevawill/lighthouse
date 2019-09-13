@@ -905,6 +905,13 @@ impl<T: EthSpec> BeaconState<T> {
         })
     }
 
+    pub fn advance_period_cache(&mut self, spec: &ChainSpec) -> Result<(), Error> {
+        let next_committee = PeriodCommitteeCache::initialize(self, spec)?;
+        self.period_caches.rotate_left(1);
+        self.period_caches[self.period_index(RelativePeriod::Next)] = next_committee;
+        Ok(())
+    }
+
     /// Build all the caches, if they need to be built.
     pub fn build_all_caches(&mut self, spec: &ChainSpec) -> Result<(), Error> {
         self.build_committee_cache(RelativeEpoch::Previous, spec)?;
