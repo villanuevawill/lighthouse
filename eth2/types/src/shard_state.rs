@@ -6,9 +6,9 @@ use hashing::hash;
 use serde_derive::{Deserialize, Serialize};
 use ssz::ssz_encode;
 use ssz_derive::{Decode, Encode};
+use std::marker::PhantomData;
 use test_random_derive::TestRandom;
 use tree_hash::TreeHash;
-use std::marker::PhantomData;
 use tree_hash_derive::{CachedTreeHash, TreeHash};
 
 #[derive(Debug, PartialEq)]
@@ -52,10 +52,7 @@ where
 }
 
 impl<T: EthSpec> ShardState<T> {
-    pub fn genesis(
-        spec: &ChainSpec,
-        shard: u64,
-    ) -> ShardState<T> {
+    pub fn genesis(spec: &ChainSpec, shard: u64) -> ShardState<T> {
         ShardState {
             shard,
             slot: ShardSlot::from(spec.phase_1_fork_slot),
