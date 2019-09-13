@@ -2,27 +2,34 @@ use crate::*;
 use ssz::{Decode, DecodeError, Encode};
 use ssz_derive::{Decode, Encode};
 use std::convert::TryInto;
-use types::beacon_state::{CommitteeCache, CACHED_EPOCHS};
+use types::beacon_state::{CommitteeCache, PeriodCommitteeCache, CACHED_EPOCHS, CACHED_PERIODS};
 
 /// A container for storing `BeaconState` components.
 #[derive(Encode, Decode)]
 struct StorageContainer {
     state_bytes: Vec<u8>,
     committee_caches_bytes: Vec<Vec<u8>>,
+    period_caches_bytes: Vec<Vec<u8>>,
 }
 
 impl StorageContainer {
     /// Create a new instance for storing a `BeaconState`.
     pub fn new<T: EthSpec>(state: &BeaconState<T>) -> Self {
         let mut committee_caches_bytes = vec![];
+        let mut period_caches_bytes = vec![];
 
         for cache in state.committee_caches[..].iter() {
             committee_caches_bytes.push(cache.as_ssz_bytes());
         }
 
+        for cache in state.period_caches[..].iter() {
+            period_caches_bytes.push(cache.as_ssz_bytes());
+        }
+
         Self {
             state_bytes: state.as_ssz_bytes(),
             committee_caches_bytes,
+            period_caches_bytes,
         }
     }
 }
@@ -41,6 +48,16 @@ impl<T: EthSpec> TryInto<BeaconState<T>> for StorageContainer {
             })?;
 
             state.committee_caches[i] = CommitteeCache::from_ssz_bytes(bytes)?;
+        }
+
+        for i in 0..CACHED_PERIODS {
+            let bytes = &self.period_caches_bytes.get(i).ok_or_else(|| {
+                Error::SszDecodeError(DecodeError::BytesInvalid(
+                    "Insufficient period committees for BeaconState".to_string(),
+                ))
+            })?;
+
+            state.period_caches[i] = PeriodCommitteeCache::from_ssz_bytes(bytes)?;
         }
 
         Ok(state)
