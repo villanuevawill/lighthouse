@@ -19,7 +19,7 @@ pub fn process_period_committee<T: EthSpec>(
 
     if current_period - shard_fork_period + 2 >= 0 {
         state.advance_period_cache(spec);
-        state.period_committee_roots[(spec.period_committee_root_length - 1) as usize] =
+        state.period_committee_roots[(current_period.as_u64() % spec.period_committee_root_length) as usize] =
             Hash256::from_slice(
                 &state.period_caches[state.period_index(RelativePeriod::Next)]
                     .committees
