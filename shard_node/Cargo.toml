@@ -1,7 +1,0 @@
-[package]
-name = "shard_node"
-version = "0.1.0"
-authors = ["will <wvillanu89@gmail.com>"]
-edition = "2018"
-
-[dependencies]
