@@ -8,7 +8,7 @@ use parking_lot::{RwLock, RwLockReadGuard};
 use slot_clock::SlotClock;
 use state_processing::{
     per_shard_block_processing,
-    per_shard_slot_processing, BlockProcessingError,
+    per_shard_slot_processing, ShardBlockProcessingError,
 };
 use std::sync::Arc;
 use shard_store::iter::{BestBlockRootsIterator, BlockIterator, BlockRootsIterator, StateRootsIterator};
@@ -21,6 +21,29 @@ use types::*;
 //
 //                          |-------must be this long------|
 pub const GRAFFITI: &str = "sigp/lighthouse-0.0.0-prerelease";
+
+#[derive(Debug, PartialEq)]
+pub enum BlockProcessingOutcome {
+    /// Block was valid and imported into the block graph.
+    Processed { block_root: Hash256 },
+    /// The blocks parent_root is unknown.
+    ParentUnknown { parent: Hash256 },
+    /// The block slot is greater than the present slot.
+    FutureSlot {
+        present_slot: ShardSlot,
+        block_slot: ShardSlot,
+    },
+    /// The block state_root does not match the generated state.
+    StateRootMismatch,
+    /// The block was a genesis block, these blocks cannot be re-imported.
+    GenesisBlock,
+    /// The slot is finalized, no need to import.
+    FinalizedSlot,
+    /// Block is already known, no need to re-import.
+    BlockIsAlreadyKnown,
+    /// The block could not be applied to the state, it is invalid.
+    PerBlockProcessingError(ShardBlockProcessingError),
+}
 
 pub trait ShardChainTypes {
     type Store: shard_store::Store;
@@ -174,7 +197,7 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         let spec = &self.spec;
 
         let present_slot = match self.slot_clock.present_slot() {
-            Ok(Some(slot)) => slot,
+            Ok(Some(slot)) => slot.shard_slot(spec.slots_per_epoch, spec.shard_slots_per_epoch),
             _ => return Err(Error::UnableToReadSlot),
         };
 
@@ -192,94 +215,92 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         Ok(())
     }
 
-    // /// Build all of the caches on the current state.
-    // ///
-    // /// Ideally this shouldn't be required, however we leave it here for testing.
-    // pub fn ensure_state_caches_are_built(&self) -> Result<(), Error> {
-    //     self.state.write().build_all_caches(&self.spec)?;
+    /// Build all of the caches on the current state.
+    ///
+    /// Ideally this shouldn't be required, however we leave it here for testing.
+    pub fn ensure_state_caches_are_built(&self) -> Result<(), Error> {
+        self.state.write().build_cache(&self.spec)?;
 
-    //     Ok(())
-    // }
+        Ok(())
+    }
 
-    // /// Returns the validator index (if any) for the given public key.
-    // ///
-    // /// Information is retrieved from the present `beacon_state.validator_registry`.
-    // pub fn validator_index(&self, pubkey: &PublicKey) -> Option<usize> {
-    //     // reference directly to beacon chain parent
-    //     // needs to make sure it is part of this particular shard
-    //     for (i, validator) in self
-    //         .parent_beacon
-    //         .current_state()
-    //         .validator_registry
-    //         .iter()
-    //         .enumerate()
-    //     {
-    //         if validator.pubkey == *pubkey {
-    //             if self.parent_beacon.current_state().get_attestation_duties(i).shard = self.shard {
-    //                 return Some(i);
-    //             }
-    //         }
-    //     }
-    //     None
-    // }
+    /// Returns the validator index (if any) for the given public key.
+    ///
+    /// Information is retrieved from the present `beacon_state.validator_registry`.
+    pub fn validator_index(&self, pubkey: &PublicKey) -> Option<usize> {
+        // reference directly to beacon chain parent
+        for (i, validator) in self
+            .parent_beacon
+            .head()
+            .beacon_state
+            .validator_registry
+            .iter()
+            .enumerate()
+        {
+            if validator.pubkey == *pubkey {
+                return Some(i);
+            }
+        }
+        None
+    }
 
-    // /// Reads the slot clock, returns `None` if the slot is unavailable.
-    // ///
-    // /// The slot might be unavailable due to an error with the system clock, or if the present time
-    // /// is before genesis (i.e., a negative slot).
-    // ///
-    // /// This is distinct to `present_slot`, which simply reads the latest state. If a
-    // /// call to `read_slot_clock` results in a higher slot than a call to `present_slot`,
-    // /// `self.state` should undergo per slot processing.
-    // pub fn read_slot_clock(&self) -> Option<Slot> {
-    //     match self.slot_clock.present_slot() {
-    //         Ok(Some(some_slot)) => Some(some_slot),
-    //         Ok(None) => None,
-    //         _ => None,
-    //     }
-    // }
+    /// Reads the slot clock and returns a ShardSlot, returns `None` if the slot is unavailable.
+    ///
+    /// The slot might be unavailable due to an error with the system clock, or if the present time
+    /// is before genesis (i.e., a negative slot).
+    ///
+    /// This is distinct to `present_slot`, which simply reads the latest state. If a
+    /// call to `read_slot_clock` results in a higher slot than a call to `present_slot`,
+    /// `self.state` should undergo per slot processing.
+    pub fn read_slot_clock(&self) -> Option<ShardSlot> {
+        let spec = &self.spec;
+        
+        match self.slot_clock.present_slot() {
+            Ok(Some(some_slot)) => Some(some_slot.shard_slot(spec.slots_per_epoch, spec.shard_slots_per_epoch)),
+            Ok(None) => None,
+            _ => None,
+        }
+    }
 
-    // /// Reads the slot clock (see `self.read_slot_clock()` and returns the number of slots since
-    // /// genesis.
-    // pub fn slots_since_genesis(&self) -> Option<SlotHeight> {
-    //     let now = self.read_slot_clock()?;
-    //     let genesis_slot = self.spec.genesis_slot;
+    /// Reads the slot clock (see `self.read_slot_clock()` and returns the number of slots since
+    /// genesis.
+    pub fn slots_since_genesis(&self) -> Option<ShardSlotHeight> {
+        let now = self.read_slot_clock()?;
+        let spec = &self.spec;
+        let genesis_slot = spec.phase_1_fork_epoch * spec.shard_slots_per_epoch;
 
-    //     if now < genesis_slot {
-    //         None
-    //     } else {
-    //         Some(SlotHeight::from(now.as_u64() - genesis_slot.as_u64()))
-    //     }
-    // }
 
-    // /// Returns slot of the present state.
-    // ///
-    // /// This is distinct to `read_slot_clock`, which reads from the actual system clock. If
-    // /// `self.state` has not been transitioned it is possible for the system clock to be on a
-    // /// different slot to what is returned from this call.
-    // pub fn present_slot(&self) -> Slot {
-    //     self.state.read().slot
-    // }
+        if now < genesis_slot {
+            None
+        } else {
+            Some(ShardSlotHeight::from(now.as_u64() - genesis_slot))
+        }
+    }
 
-    // /// Returns the block proposer for a given slot.
-    // ///
-    // /// Information is read from the present `beacon_state` shuffling, only information from the
-    // /// present epoch is available.
-    // pub fn block_proposer(&self, slot: Slot, shard: Shard) -> Result<usize, Error> {
-    //     // Update to go to beacon chain for this information
-    //     // Ensures that the present state has been advanced to the present slot, skipping slots if
-    //     // blocks are not present.
-    //     // self.catchup_state()?;
+    /// Returns slot of the present state.
+    ///
+    /// This is distinct to `read_slot_clock`, which reads from the actual system clock. If
+    /// `self.state` has not been transitioned it is possible for the system clock to be on a
+    /// different slot to what is returned from this call.
+    pub fn present_slot(&self) -> ShardSlot {
+        self.state.read().slot
+    }
 
-    //     // // TODO: permit lookups of the proposer at any slot.
-    //     let index = self.parent_beacon.get_shard_proposer_index(
-    //         slot,
-    //         shard,
-    //         &self.spec,
-    //     )?;
+    /// Returns the block proposer for a given slot.
+    ///
+    /// Information is read from the present `beacon_state`
+    pub fn block_proposer(&self, slot: ShardSlot, shard: u64) -> Result<usize, Error> {
+        // Ensures that the present state has been advanced to the present slot, skipping slots if
+        // blocks are not present.
+        self.catchup_state()?;
 
-    //     Ok(index)
-    // }
+        let index = self.parent_beacon.current_state().get_shard_proposer_index(
+            shard,
+            slot,
+        )?;
+
+        Ok(index)
+    }
 
     // /// Produce an `AttestationData` that is valid for the present `slot` and given `shard`.
     // ///
@@ -323,108 +344,101 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
     //     result
     // }
 
-    // // This needs to be written and implemented
-    // pub fn process_transactions() -> {}
+    /// Accept some block and attempt to add it to block DAG.
+    ///
+    /// Will accept blocks from prior slots, however it will reject any block from a future slot.
+    pub fn process_block(&self, block: ShardBlock) -> Result<BlockProcessingOutcome, Error> {
+        let spec = &self.spec;
+        let beacon_state = &self.parent_beacon.current_state();
+        
+        let finalized_slot = beacon_state
+            .finalized_epoch
+            .start_slot(spec.slots_per_epoch)
+            .shard_slot(spec.slots_per_epoch, spec.shard_slots_per_epoch);
 
-    // /// Accept some block and attempt to add it to block DAG.
-    // ///
-    // /// Will accept blocks from prior slots, however it will reject any block from a future slot.
-    // pub fn process_block(&self, block: ShardBlock) -> Result<BlockProcessingOutcome, Error> {
-    //     // In the future... need some logic here that will actually check to see
-    //     // if the slot has been part of a finalized crosslink on the beacon chain
-    //     // extra logic needed, but for our testnet/system we won't need this to the full degree
-    //     // let finalized_slot = self
-    //     //     .state
-    //     //     .read()
-    //     //     .finalized_epoch
-    //     //     .start_slot(T::EthSpec::slots_per_epoch());
+        if block.slot <= finalized_slot {
+            return Ok(BlockProcessingOutcome::FinalizedSlot);
+        }
 
-    //     // if block.slot <= finalized_slot {
-    //     //     return Ok(BlockProcessingOutcome::FinalizedSlot);
-    //     // }
+        if block.slot == 0 {
+            return Ok(BlockProcessingOutcome::GenesisBlock);
+        }
 
-    //     if block.slot == 0 {
-    //         return Ok(BlockProcessingOutcome::GenesisBlock);
-    //     }
+        let block_root = block.block_header().canonical_root();
 
-    //     let block_root = block.block_header().canonical_root();
+        if block_root == self.genesis_block_root {
+            return Ok(BlockProcessingOutcome::GenesisBlock);
+        }
 
-    //     if block_root == self.genesis_block_root {
-    //         return Ok(BlockProcessingOutcome::GenesisBlock);
-    //     }
+        let present_slot = self
+            .read_slot_clock()
+            .ok_or_else(|| Error::UnableToReadSlot)?;
 
-    //     let present_slot = self
-    //         .read_slot_clock()
-    //         .ok_or_else(|| Error::UnableToReadSlot)?;
+        if block.slot > present_slot {
+            return Ok(BlockProcessingOutcome::FutureSlot {
+                present_slot,
+                block_slot: block.slot,
+            });
+        }
 
-    //     if block.slot > present_slot {
-    //         return Ok(BlockProcessingOutcome::FutureSlot {
-    //             present_slot,
-    //             block_slot: block.slot,
-    //         });
-    //     }
+        if self.store.exists::<ShardBlock>(&block_root)? {
+            return Ok(BlockProcessingOutcome::BlockIsAlreadyKnown);
+        }
 
-    //     if self.store.exists::<ShardBlock>(&block_root)? {
-    //         return Ok(BlockProcessingOutcome::BlockIsAlreadyKnown);
-    //     }
+        // Load the blocks parent block from the database, returning invalid if that block is not
+        // found.
+        let parent_block_root = block.parent_root;
+        let parent_block: ShardBlock = match self.store.get(&parent_block_root)? {
+            Some(previous_block_root) => previous_block_root,
+            None => {
+                return Ok(BlockProcessingOutcome::ParentUnknown {
+                    parent: parent_block_root,
+                });
+            }
+        };
 
-    //     // Load the blocks parent block from the database, returning invalid if that block is not
-    //     // found.
-    //     let parent_block_root = block.previous_block_root;
-    //     let parent_block: ShardBlock = match self.store.get(&parent_block_root)? {
-    //         Some(previous_block_root) => previous_block_root,
-    //         None => {
-    //             return Ok(BlockProcessingOutcome::ParentUnknown {
-    //                 parent: parent_block_root,
-    //             });
-    //         }
-    //     };
+        // Load the parent blocks state from the database, returning an error if it is not found.
+        // It is an error because if know the parent block we should also know the parent state.
+        let parent_state_root = parent_block.state_root;
+        let parent_state = self
+            .store
+            .get(&parent_state_root)?
+            .ok_or_else(|| Error::DBInconsistent(format!("Missing state {}", parent_state_root)))?;
 
-    //     // Load the parent blocks state from the database, returning an error if it is not found.
-    //     // It is an error because if know the parent block we should also know the parent state.
-    //     let parent_state_root = parent_block.state_root;
-    //     let parent_state = self
-    //         .store
-    //         .get(&parent_state_root)?
-    //         .ok_or_else(|| Error::DBInconsistent(format!("Missing state {}", parent_state_root)))?;
+        // Transition the parent state to the block slot.
+        let mut state: ShardState<T::ShardSpec> = parent_state;
+        for _ in state.slot.as_u64()..block.slot.as_u64() {
+            per_shard_slot_processing(&mut state, &self.spec)?;
+        }
 
-    //     // Transition the parent state to the block slot.
-    //     let mut state: ShardState<T::EthSpec> = parent_state;
-    //     for _ in state.slot.as_u64()..block.slot.as_u64() {
-    //         per_shard_slot_processing(&mut state, &self.spec)?;
-    //     }
+        // Apply the received block to its parent state (which has been transitioned into this
+        // slot).
+        match per_shard_block_processing(beacon_state, &mut state, &block, &self.spec) {
+            Err(e) => return Ok(BlockProcessingOutcome::PerBlockProcessingError(e)),
+            _ => {}
+        }
 
-    //     // Apply the received block to its parent state (which has been transitioned into this
-    //     // slot).
-    //     match per_shard_block_processing(&mut state, &block, &self.spec) {
-    //         Err(BlockProcessingError::ShardStateError(e)) => {
-    //             return Err(Error::ShardStateError(e))
-    //         }
-    //         Err(e) => return Ok(BlockProcessingOutcome::PerBlockProcessingError(e)),
-    //         _ => {}
-    //     }
+        let state_root = state.canonical_root();
 
-    //     let state_root = state.canonical_root();
+        if block.state_root != state_root {
+            return Ok(BlockProcessingOutcome::StateRootMismatch);
+        }
 
-    //     if block.state_root != state_root {
-    //         return Ok(BlockProcessingOutcome::StateRootMismatch);
-    //     }
-
-    //     // Store the block and state.
-    //     self.store.put(&block_root, &block)?;
-    //     self.store.put(&state_root, &state)?;
+        // Store the block and state.
+        self.store.put(&block_root, &block)?;
+        self.store.put(&state_root, &state)?;
         
 
-    //     // Register the new block with the fork choice service.
-    //     // self.fork_choice.process_block(&state, &block, block_root)?;
+        // Register the new block with the fork choice service.
+        // self.fork_choice.process_block(&state, &block, block_root)?;
 
-    //     // Execute the fork choice algorithm, enthroning a new head if discovered.
-    //     //
-    //     // Note: in the future we may choose to run fork-choice less often, potentially based upon
-    //     // some heuristic around number of attestations seen for the block.
-    //     // self.fork_choice()?;
-    //     Ok(BlockProcessingOutcome::Processed { block_root })
-    // }
+        // Execute the fork choice algorithm, enthroning a new head if discovered.
+        //
+        // Note: in the future we may choose to run fork-choice less often, potentially based upon
+        // some heuristic around number of attestations seen for the block.
+        // self.fork_choice()?;
+        Ok(BlockProcessingOutcome::Processed { block_root })
+    }
 
     // /// Produce a new block at the present slot.
     // ///
