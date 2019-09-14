@@ -42,11 +42,6 @@ impl<'a, T: ShardSpec, U: Store> Iterator for StateRootsIterator<'a, T, U> {
         while self.slot < self.shard_state.slot {
             let next_root = self.shard_state.history_accumulator[0];
             let shard_state: ShardState<T> = self.store.get(&next_root).ok()??;
-
-            if self.slot > shard_state.slot {
-                return Some((Hash256::zero(), self.slot));
-            }
-
             self.shard_state = Cow::Owned(shard_state);
         }
 
@@ -123,11 +118,6 @@ impl<'a, T: ShardSpec, U: Store> Iterator for BlockRootsIterator<'a, T, U> {
         while self.slot < self.shard_state.slot {
             let next_root = self.shard_state.history_accumulator[0];
             let shard_state: ShardState<T> = self.store.get(&next_root).ok()??;
-
-            if self.slot > shard_state.slot {
-                return Some((Hash256::zero(), self.slot));
-            }
-
             self.shard_state = Cow::Owned(shard_state);
         }
 
@@ -187,11 +177,6 @@ impl<'a, T: ShardSpec, U: Store> Iterator for BestBlockRootsIterator<'a, T, U> {
         while self.slot < self.shard_state.slot {
             let next_root = self.shard_state.history_accumulator[0];
             let shard_state: ShardState<T> = self.store.get(&next_root).ok()??;
-
-            if self.slot > shard_state.slot {
-                return Some((Hash256::zero(), self.slot));
-            }
-
             self.shard_state = Cow::Owned(shard_state);
         }
 
