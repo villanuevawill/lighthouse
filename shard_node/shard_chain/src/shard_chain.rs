@@ -11,7 +11,7 @@ use state_processing::{
     per_shard_slot_processing, BlockProcessingError,
 };
 use std::sync::Arc;
-// use store::iter::{BestBlockRootsIterator, BlockIterator, BlockRootsIterator, StateRootsIterator};
+use shard_store::iter::{BestBlockRootsIterator, BlockIterator, BlockRootsIterator, StateRootsIterator};
 use shard_store::{Error as DBError, Store};
 use tree_hash::TreeHash;
 use types::*;
@@ -86,105 +86,88 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         })
     }
 
-    // /// Returns the beacon block body for each beacon block root in `roots`.
-    // ///
-    // /// Fails if any root in `roots` does not have a corresponding block.
-    // pub fn get_block_bodies(&self, roots: &[Hash256]) -> Result<Vec<ShardBlockBody>, Error> {
-    //     let bodies: Result<Vec<ShardBlockBody>, _> = roots
-    //         .iter()
-    //         .map(|root| match self.get_block(root)? {
-    //             Some(block) => Ok(block.body),
-    //             None => Err(Error::DBInconsistent(format!("Missing block: {}", root))),
-    //         })
-    //         .collect();
+    pub fn get_block_headers(&self, roots: &[Hash256]) -> Result<Vec<ShardBlockHeader>, Error> {
+        let headers: Result<Vec<ShardBlockHeader>, _> = roots
+            .iter()
+            .map(|root| match self.get_block(root)? {
+                Some(block) => Ok(block.block_header()),
+                None => Err(Error::DBInconsistent("Missing block".into())),
+            })
+            .collect();
 
-    //     Ok(bodies?)
-    // }
+        Ok(headers?)
+    }
 
-    // /// Returns the beacon block header for each beacon block root in `roots`.
-    // ///
-    // /// Fails if any root in `roots` does not have a corresponding block.
-    // pub fn get_block_headers(&self, roots: &[Hash256]) -> Result<Vec<ShardBlockHeader>, Error> {
-    //     let headers: Result<Vec<ShardBlockHeader>, _> = roots
-    //         .iter()
-    //         .map(|root| match self.get_block(root)? {
-    //             Some(block) => Ok(block.block_header()),
-    //             None => Err(Error::DBInconsistent("Missing block".into())),
-    //         })
-    //         .collect();
+    /// Iterate in reverse (highest to lowest slot) through all blocks from the block at `slot`
+    /// through to the genesis block.
+    ///
+    /// Returns `None` for headers prior to genesis or when there is an error reading from `Store`.
+    ///
+    /// Contains duplicate headers when skip slots are encountered.
+    pub fn rev_iter_blocks(&self, slot: ShardSlot) -> BlockIterator<T::ShardSpec, T::Store> {
+        BlockIterator::owned(self.store.clone(), self.state.read().clone(), slot)
+    }
 
-    //     Ok(headers?)
-    // }
-    // /// Iterate in reverse (highest to lowest slot) through all blocks from the block at `slot`
-    // /// through to the genesis block.
-    // ///
-    // /// Returns `None` for headers prior to genesis or when there is an error reading from `Store`.
-    // ///
-    // /// Contains duplicate headers when skip slots are encountered.
-    // pub fn rev_iter_blocks(&self, slot: Slot) -> BlockIterator<T::EthSpec, T::Store> {
-    //     BlockIterator::owned(self.store.clone(), self.state.read().clone(), slot)
-    // }
+    /// Iterates in reverse (highest to lowest slot) through all block roots from `slot` through to
+    /// genesis.
+    ///
+    /// Returns `None` for roots prior to genesis or when there is an error reading from `Store`.
+    ///
+    /// Contains duplicate roots when skip slots are encountered.
+    pub fn rev_iter_block_roots(&self, slot: ShardSlot) -> BlockRootsIterator<T::ShardSpec, T::Store> {
+        BlockRootsIterator::owned(self.store.clone(), self.state.read().clone(), slot)
+    }
 
-    // /// Iterates in reverse (highest to lowest slot) through all block roots from `slot` through to
-    // /// genesis.
-    // ///
-    // /// Returns `None` for roots prior to genesis or when there is an error reading from `Store`.
-    // ///
-    // /// Contains duplicate roots when skip slots are encountered.
-    // pub fn rev_iter_block_roots(&self, slot: Slot) -> BlockRootsIterator<T::EthSpec, T::Store> {
-    //     BlockRootsIterator::owned(self.store.clone(), self.state.read().clone(), slot)
-    // }
+    /// Iterates in reverse (highest to lowest slot) through all block roots from largest
+    /// `slot <= beacon_state.slot` through to genesis.
+    ///
+    /// Returns `None` for roots prior to genesis or when there is an error reading from `Store`.
+    ///
+    /// Contains duplicate roots when skip slots are encountered.
+    pub fn rev_iter_best_block_roots(
+        &self,
+        slot: ShardSlot,
+    ) -> BestBlockRootsIterator<T::ShardSpec, T::Store> {
+        BestBlockRootsIterator::owned(self.store.clone(), self.state.read().clone(), slot)
+    }
 
-    // /// Iterates in reverse (highest to lowest slot) through all block roots from largest
-    // /// `slot <= beacon_state.slot` through to genesis.
-    // ///
-    // /// Returns `None` for roots prior to genesis or when there is an error reading from `Store`.
-    // ///
-    // /// Contains duplicate roots when skip slots are encountered.
-    // pub fn rev_iter_best_block_roots(
-    //     &self,
-    //     slot: Slot,
-    // ) -> BestBlockRootsIterator<T::EthSpec, T::Store> {
-    //     BestBlockRootsIterator::owned(self.store.clone(), self.state.read().clone(), slot)
-    // }
+    /// Iterates in reverse (highest to lowest slot) through all state roots from `slot` through to
+    /// genesis.
+    ///
+    /// Returns `None` for roots prior to genesis or when there is an error reading from `Store`.
+    pub fn rev_iter_state_roots(&self, slot: ShardSlot) -> StateRootsIterator<T::ShardSpec, T::Store> {
+        StateRootsIterator::owned(self.store.clone(), self.state.read().clone(), slot)
+    }
 
-    // /// Iterates in reverse (highest to lowest slot) through all state roots from `slot` through to
-    // /// genesis.
-    // ///
-    // /// Returns `None` for roots prior to genesis or when there is an error reading from `Store`.
-    // pub fn f(&self, slot: Slot) -> StateRootsIterator<T::EthSpec, T::Store> {
-    //     StateRootsIterator::owned(self.store.clone(), self.state.read().clone(), slot)
-    // }
+    /// Returns the block at the given root, if any.
+    ///
+    /// ## Errors
+    ///
+    /// May return a database error.
+    pub fn get_block(&self, block_root: &Hash256) -> Result<Option<ShardBlock>, Error> {
+        Ok(self.store.get(block_root)?)
+    }
 
-    // /// Returns the block at the given root, if any.
-    // ///
-    // /// ## Errors
-    // ///
-    // /// May return a database error.
-    // pub fn get_block(&self, block_root: &Hash256) -> Result<Option<ShardBlock>, Error> {
-    //     Ok(self.store.get(block_root)?)
-    // }
+    /// Returns a read-lock guarded `ShardState` which is the `canonical_head` that has been
+    /// updated to match the current slot clock.
+    pub fn current_state(&self) -> RwLockReadGuard<ShardState<T::ShardSpec>> {
+        self.state.read()
+    }
 
-    // /// Returns a read-lock guarded `BeaconState` which is the `canonical_head` that has been
-    // /// updated to match the current slot clock.
-    // pub fn current_state(&self) -> RwLockReadGuard<ShardState<T::EthSpec>> {
-    //     self.state.read()
-    // }
+    /// Returns a read-lock guarded `CheckPoint` struct for reading the head (as chosen by the
+    /// fork-choice rule).
+    ///
+    /// It is important to note that the `shard_state` returned may not match the present slot. It
+    /// is the state as it was when the head block was received, which could be some slots prior to
+    /// now.
+    pub fn head(&self) -> RwLockReadGuard<CheckPoint<T::ShardSpec>> {
+        self.canonical_head.read()
+    }
 
-    // /// Returns a read-lock guarded `CheckPoint` struct for reading the head (as chosen by the
-    // /// fork-choice rule).
-    // ///
-    // /// It is important to note that the `beacon_state` returned may not match the present slot. It
-    // /// is the state as it was when the head block was received, which could be some slots prior to
-    // /// now.
-    // pub fn head(&self) -> RwLockReadGuard<CheckPoint<T::EthSpec>> {
-    //     self.canonical_head.read()
-    // }
-
-    // /// Returns the slot of the highest block in the canonical chain.
-    // pub fn best_slot(&self) -> Slot {
-    //     self.canonical_head.read().shard_block.slot
-    // }
+    /// Returns the slot of the highest block in the canonical chain.
+    pub fn best_slot(&self) -> ShardSlot {
+        self.canonical_head.read().shard_block.slot
+    }
 
     // /// Ensures the current canonical `BeaconState` has been transitioned to match the `slot_clock`.
     // pub fn catchup_state(&self) -> Result<(), Error> {
