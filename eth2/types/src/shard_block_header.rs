@@ -34,6 +34,18 @@ pub struct ShardBlockHeader {
 }
 
 impl ShardBlockHeader {
+    pub fn empty(spec: &ChainSpec, shard: u64) -> ShardBlockHeader {
+        ShardBlockHeader {
+            shard,
+            slot: ShardSlot::from(spec.phase_1_fork_slot),
+            beacon_block_root: spec.zero_hash,
+            parent_root: spec.zero_hash,
+            state_root: spec.zero_hash,
+            attestation: ShardAttestation::default(),
+            signature: Signature::empty_signature(),
+        }
+    }
+
     pub fn canonical_root(&self) -> Hash256 {
         Hash256::from_slice(&self.signed_root()[..])
     }
