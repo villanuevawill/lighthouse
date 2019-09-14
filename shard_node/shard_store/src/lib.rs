@@ -10,6 +10,7 @@
 
 mod impls;
 mod block_at_slot;
+mod iter;
 mod errors;
 mod memory_store;
 
