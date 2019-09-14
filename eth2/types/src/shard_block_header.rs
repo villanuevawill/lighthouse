@@ -24,10 +24,11 @@ use tree_hash_derive::{CachedTreeHash, SignedRoot, TreeHash};
 pub struct ShardBlockHeader {
     pub slot: ShardSlot,
     pub shard: u64,
-    pub previous_block_root: Hash256,
+    pub parent_root: Hash256,
     pub beacon_block_root: Hash256,
     pub state_root: Hash256,
-    pub body_root: Hash256,
+    // need to add body
+    pub attestation: ShardAttestation,
     #[signed_root(skip_hashing)]
     pub signature: Signature,
 }
@@ -37,21 +38,24 @@ impl ShardBlockHeader {
         Hash256::from_slice(&self.signed_root()[..])
     }
 
-    // pub fn into_block(self, body: ShardBlockBody) -> ShardBlock {
-    //     ShardBlock {
-    //         slot: self.slot,
-    //         previous_block_root: self.previous_block_root,
-    //         state_root: self.state_root,
-    //         body,
-    //         signature: self.signature,
-    //     }
-    // }
+    pub fn into_block(self) -> ShardBlock {
+        // add body logic
+        ShardBlock {
+            shard: self.shard,
+            slot: self.slot,
+            beacon_block_root: self.beacon_block_root,
+            parent_root: self.parent_root,
+            state_root: self.state_root,
+            attestation: self.attestation,
+            signature: self.signature,
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    ssz_tests!(BeaconBlockHeader);
-    cached_tree_hash_tests!(BeaconBlockHeader);
+    ssz_tests!(ShardBlockHeader);
+    cached_tree_hash_tests!(ShardBlockHeader);
 }
