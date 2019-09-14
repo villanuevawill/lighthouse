@@ -2,6 +2,7 @@ use crate::test_utils::TestRandom;
 use crate::*;
 use cached_tree_hash::{Error as TreeHashCacheError, TreeHashCache};
 use compare_fields_derive::CompareFields;
+use fixed_len_vec::FixedLenVec;
 use hashing::hash;
 use serde_derive::{Deserialize, Serialize};
 use ssz::ssz_encode;
@@ -10,6 +11,10 @@ use std::marker::PhantomData;
 use test_random_derive::TestRandom;
 use tree_hash::TreeHash;
 use tree_hash_derive::{CachedTreeHash, TreeHash};
+
+pub use shard_state_types::*;
+
+mod shard_state_types;
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
@@ -31,10 +36,11 @@ pub enum Error {
 )]
 pub struct ShardState<T>
 where
-    T: EthSpec,
+    T: ShardSpec,
 {
     pub shard: u64,
     pub slot: ShardSlot,
+    pub history_accumulator: FixedLenVec<Hash256, T::HistoryAccumulatorDepth>,
 
     #[serde(skip_serializing, skip_deserializing)]
     #[ssz(skip_serializing)]
@@ -51,11 +57,15 @@ where
     _phantom: PhantomData<T>,
 }
 
-impl<T: EthSpec> ShardState<T> {
+impl<T: ShardSpec> ShardState<T> {
     pub fn genesis(spec: &ChainSpec, shard: u64) -> ShardState<T> {
         ShardState {
             shard,
             slot: ShardSlot::from(spec.phase_1_fork_slot),
+            history_accumulator: FixedLenVec::from(vec![
+                spec.zero_hash;
+                T::HistoryAccumulatorDepth::to_usize()
+            ]),
             tree_hash_cache: TreeHashCache::default(),
             _phantom: PhantomData,
         }
