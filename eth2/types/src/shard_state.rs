@@ -41,6 +41,7 @@ where
     pub shard: u64,
     pub slot: ShardSlot,
     pub history_accumulator: FixedLenVec<Hash256, T::HistoryAccumulatorDepth>,
+    pub latest_block_header: ShardBlockHeader,
 
     #[serde(skip_serializing, skip_deserializing)]
     #[ssz(skip_serializing)]
@@ -66,6 +67,7 @@ impl<T: ShardSpec> ShardState<T> {
                 spec.zero_hash;
                 T::HistoryAccumulatorDepth::to_usize()
             ]),
+            latest_block_header: ShardBlockHeader::empty(spec, shard),
             tree_hash_cache: TreeHashCache::default(),
             _phantom: PhantomData,
         }

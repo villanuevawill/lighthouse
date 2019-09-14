@@ -8,8 +8,8 @@ use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::sync::Arc;
-use store::{iter::BestBlockRootsIterator, Error as StoreError, Store};
-use types::{ShardBlock, ShardState, EthSpec, Hash256, Slot};
+use shard_store::{iter::BestBlockRootsIterator, Error as StoreError, Store};
+use types::{ShardBlock, ShardState, ShardSpec, Hash256, ShardSlot};
 
 type Result<T> = std::result::Result<T, Error>;
 
@@ -38,7 +38,7 @@ pub struct ThreadSafeReducedTree<T, E> {
 impl<T, E> LmdGhost<T, E> for ThreadSafeReducedTree<T, E>
 where
     T: Store,
-    E: EthSpec,
+    E: ShardSpec,
 {
     fn new(store: Arc<T>, genesis_block: &ShardBlock, genesis_root: Hash256) -> Self {
         ThreadSafeReducedTree {
@@ -50,7 +50,7 @@ where
         &self,
         validator_index: usize,
         block_hash: Hash256,
-        block_slot: Slot,
+        block_slot: ShardSlot,
     ) -> SuperResult<()> {
         self.core
             .write()
@@ -68,7 +68,7 @@ where
 
     fn find_head<F>(
         &self,
-        start_block_slot: Slot,
+        start_block_slot: ShardSlot,
         start_block_root: Hash256,
         weight_fn: F,
     ) -> SuperResult<Hash256>
@@ -96,14 +96,14 @@ struct ReducedTree<T, E> {
     /// Maps validator indices to their latest votes.
     latest_votes: ElasticList<Option<Vote>>,
     /// Stores the root of the tree, used for pruning.
-    root: (Hash256, Slot),
+    root: (Hash256, ShardSlot),
     _phantom: PhantomData<E>,
 }
 
 impl<T, E> ReducedTree<T, E>
 where
     T: Store,
-    E: EthSpec,
+    E: ShardSpec,
 {
     pub fn new(store: Arc<T>, genesis_block: &ShardBlock, genesis_root: Hash256) -> Self {
         let mut nodes = HashMap::new();
@@ -126,7 +126,7 @@ where
         }
     }
 
-    pub fn update_root(&mut self, new_slot: Slot, new_root: Hash256) -> Result<()> {
+    pub fn update_root(&mut self, new_slot: ShardSlot, new_root: Hash256) -> Result<()> {
         if !self.nodes.contains_key(&new_root) {
             let node = Node {
                 block_hash: new_root,
@@ -169,7 +169,7 @@ where
         &mut self,
         validator_index: usize,
         block_hash: Hash256,
-        slot: Slot,
+        slot: ShardSlot,
     ) -> Result<()> {
         if slot >= self.root_slot() {
             if let Some(previous_vote) = self.latest_votes.get(validator_index) {
@@ -200,7 +200,7 @@ where
 
     pub fn update_weights_and_find_head<F>(
         &mut self,
-        start_block_slot: Slot,
+        start_block_slot: ShardSlot,
         start_block_root: Hash256,
         weight_fn: F,
     ) -> Result<Hash256>
@@ -384,7 +384,7 @@ where
         Ok(())
     }
 
-    fn add_weightless_node(&mut self, slot: Slot, hash: Hash256) -> Result<()> {
+    fn add_weightless_node(&mut self, slot: ShardSlot, hash: Hash256) -> Result<()> {
         if slot >= self.root_slot() && !self.nodes.contains_key(&hash) {
             let node = Node {
                 block_hash: hash,
@@ -486,7 +486,7 @@ where
     }
 
     /// For the given `child` block hash, return the block's ancestor at the given `target` slot.
-    fn find_ancestor_at_slot(&self, child: Hash256, target: Slot) -> Result<Hash256> {
+    fn find_ancestor_at_slot(&self, child: Hash256, target: ShardSlot) -> Result<Hash256> {
         let (root, slot) = self
             .iter_ancestors(child)?
             .find(|(_block, slot)| *slot <= target)
@@ -565,7 +565,7 @@ where
             .ok_or_else(|| Error::MissingState(state_root))
     }
 
-    fn root_slot(&self) -> Slot {
+    fn root_slot(&self) -> ShardSlot {
         self.root.1
     }
 }
@@ -612,7 +612,7 @@ impl Node {
 #[derive(Debug, Clone, Copy)]
 pub struct Vote {
     hash: Hash256,
-    slot: Slot,
+    slot: ShardSlot,
 }
 
 /// A Vec-wrapper which will grow to match any request.

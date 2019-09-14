@@ -6,26 +6,26 @@ use parking_lot::RwLock;
 use std::collections::{btree_map::Entry, hash_map, BTreeMap, HashMap, HashSet};
 use std::marker::PhantomData;
 use types::{
-    BeaconState, ShardAttestation, ShardSlot, ShardState, ChainSpec, EthSpec, Validator
+    BeaconState, ShardAttestation, ShardSlot, ShardState, ChainSpec, EthSpec, ShardSpec, Validator
 };
 
 #[derive(Default, Debug)]
-pub struct ShardOperationPool<T: EthSpec + Default> {
+pub struct OperationPool<T: ShardSpec + Default> {
     attestations: RwLock<HashMap<AttestationId, Vec<ShardAttestation>>>,
     _phantom: PhantomData<T>,
 }
 
-impl<T: EthSpec> ShardOperationPool<T> {
+impl<T: ShardSpec> OperationPool<T> {
     /// Create a new operation pool.
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Insert an attestation into the pool, aggregating it with existing attestations if possible.
-    pub fn insert_attestation(
+    pub fn insert_attestation<U: EthSpec>(
         &self,
         attestation: ShardAttestation,
-        beacon_state: &BeaconState<T>,
+        beacon_state: &BeaconState<U>,
         spec: &ChainSpec,
     ) -> () {
         let id = AttestationId::from_data(&attestation.data, beacon_state, spec);
@@ -64,7 +64,7 @@ impl<T: EthSpec> ShardOperationPool<T> {
     }
 
     /// Get a list of attestations for inclusion in a block.
-    pub fn get_attestations(&self, state: &ShardState<T>, beacon_state: &BeaconState<T>, spec: &ChainSpec) -> Vec<ShardAttestation> {
+    pub fn get_attestations<U: EthSpec>(&self, state: &ShardState<T>, beacon_state: &BeaconState<U>, spec: &ChainSpec) -> Vec<ShardAttestation> {
         // enforce the right beacon state is being passed through
         let attesting_slot = ShardSlot::from(state.slot - 1);
         let epoch = attesting_slot.epoch(spec.slots_per_epoch, spec.shard_slots_per_beacon_slot);
@@ -104,6 +104,6 @@ where
         .collect()
 }
 
-impl<T: EthSpec + Default> PartialEq for ShardOperationPool<T> {
+impl<T: ShardSpec + Default> PartialEq for OperationPool<T> {
     fn eq(&self, other: &Self) -> bool { *self.attestations.read() == *other.attestations.read()}
 }

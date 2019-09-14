@@ -16,6 +16,7 @@ pub enum EpochProcessingError {
     /// (validator_index)
     InclusionSlotsInconsistent(usize),
     BeaconStateError(BeaconStateError),
+    ShardStateError(ShardStateError),
     InclusionError(InclusionError),
 }
 
