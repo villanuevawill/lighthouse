@@ -24,8 +24,10 @@ use tree_hash_derive::{CachedTreeHash, SignedRoot, TreeHash};
 pub struct ShardBlock {
     pub shard: u64,
     pub slot: ShardSlot,
-    pub previous_block_root: Hash256,
+    pub beacon_block_root: Hash256,
+    pub parent_root: Hash256,
     pub state_root: Hash256,
+    // add body
     pub attestation: ShardAttestation,
     #[signed_root(skip_hashing)]
     pub signature: Signature,
@@ -36,7 +38,8 @@ impl ShardBlock {
         ShardBlock {
             shard,
             slot: ShardSlot::from(spec.phase_1_fork_slot),
-            previous_block_root: spec.zero_hash,
+            beacon_block_root: spec.zero_hash,
+            parent_root: spec.zero_hash,
             state_root: spec.zero_hash,
             attestation: ShardAttestation::default(),
             signature: Signature::empty_signature(),
@@ -51,10 +54,10 @@ impl ShardBlock {
         ShardBlockHeader {
             shard: self.shard,
             slot: self.slot,
-            beacon_block_root: Hash256::default(),
-            previous_block_root: self.previous_block_root,
+            beacon_block_root: self.beacon_block_root,
+            parent_root: self.parent_root,
             state_root: self.state_root,
-            body_root: Hash256::default(),
+            attestation: self.attestation.clone(),
             signature: self.signature.clone(),
         }
     }
