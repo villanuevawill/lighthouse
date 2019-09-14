@@ -2,6 +2,11 @@ use crate::*;
 use types::*;
 use tree_hash::TreeHash;
 
+#[derive(Debug, PartialEq)]
+pub enum Error {
+    ShardStateError(ShardStateError),
+}
+
 pub fn per_shard_slot_processing<T: ShardSpec>(
     state: &mut ShardState<T>,
     spec: &ChainSpec,
@@ -38,5 +43,11 @@ fn process_shard_slot<T: ShardSpec>(
     while (state.slot.as_u64() % u64::pow(2, depth as u32) == 0 as u64) && (depth < T::history_accumulator_depth() as u64) {
         state.history_accumulator[depth as usize] = previous_state_root;
         depth += 1;
+    }
+}
+
+impl From<ShardStateError> for Error {
+    fn from(e: ShardStateError) -> Error {
+        Error::ShardStateError(e)
     }
 }
