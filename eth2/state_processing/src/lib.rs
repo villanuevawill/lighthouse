@@ -17,4 +17,4 @@ pub use per_block_processing::{
 pub use per_epoch_processing::{errors::EpochProcessingError, per_epoch_processing};
 pub use per_slot_processing::{per_slot_processing, Error as SlotProcessingError};
 pub use per_shard_block_processing::per_shard_block_processing;
-pub use per_shard_slot_processing::per_shard_slot_processing;
+pub use per_shard_slot_processing::{per_shard_slot_processing, Error as ShardSlotProcessingError};

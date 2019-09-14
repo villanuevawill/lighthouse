@@ -79,6 +79,7 @@ pub struct ChainSpec {
     */
     pub slots_per_epoch: u64,
     pub shard_slots_per_beacon_slot: u64,
+    pub shard_slots_per_epoch: u64,
 
     /*
     * Phase 1 specific values, fork epoch and slot are hardcoded to values for now
@@ -203,6 +204,7 @@ impl ChainSpec {
             */
             slots_per_epoch: 64,
             shard_slots_per_beacon_slot: 2,
+            shard_slots_per_epoch: 128,
 
             /*
              * Phase 1 specific values, fork epoch and slot are hardcoded to values for now
@@ -274,6 +276,7 @@ impl ChainSpec {
             network_id: 13,
             boot_nodes,
             slots_per_epoch: 8,
+            shard_slots_per_epoch: 16,
             ..ChainSpec::mainnet()
         }
     }

@@ -1,7 +1,7 @@
 // use crate::fork_choice::Error as ForkChoiceError;
 // use crate::metrics::Error as MetricsError;
 use state_processing::BlockProcessingError;
-use state_processing::SlotProcessingError;
+use state_processing::ShardSlotProcessingError;
 use types::*;
 
 macro_rules! easy_from_to {
@@ -25,11 +25,11 @@ pub enum ShardChainError {
     // ForkChoiceError(ForkChoiceError),
     MissingShardBlock(Hash256),
     MissingShardState(Hash256),
-    SlotProcessingError(SlotProcessingError),
+    ShardSlotProcessingError(ShardSlotProcessingError),
     // MetricsError(String),
 }
 
-easy_from_to!(SlotProcessingError, ShardChainError);
+easy_from_to!(ShardSlotProcessingError, ShardChainError);
 
 // impl From<MetricsError> for ShardChainError {
 //     fn from(e: MetricsError) -> ShardChainError {
@@ -41,11 +41,11 @@ easy_from_to!(SlotProcessingError, ShardChainError);
 pub enum BlockProductionError {
     UnableToGetBlockRootFromState,
     UnableToReadSlot,
-    SlotProcessingError(SlotProcessingError),
+    ShardSlotProcessingError(ShardSlotProcessingError),
     BlockProcessingError(BlockProcessingError),
     ShardStateError(ShardStateError),
 }
 
 easy_from_to!(BlockProcessingError, BlockProductionError);
 easy_from_to!(ShardStateError, BlockProductionError);
-easy_from_to!(SlotProcessingError, BlockProductionError);
+easy_from_to!(ShardSlotProcessingError, BlockProductionError);
