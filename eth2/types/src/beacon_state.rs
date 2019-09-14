@@ -27,6 +27,7 @@ mod pubkey_cache;
 mod tests;
 
 pub const CACHED_EPOCHS: usize = 3;
+pub const CACHED_PERIODS: usize = 3;
 const MAX_RANDOM_BYTE: u64 = (1 << 8) - 1;
 
 #[derive(Debug, PartialEq)]
@@ -167,7 +168,7 @@ where
     #[ssz(skip_deserializing)]
     #[tree_hash(skip_hashing)]
     #[test_random(default)]
-    pub period_caches: [PeriodCommitteeCache; 3],
+    pub period_caches: [PeriodCommitteeCache; CACHED_PERIODS],
 
     #[serde(default)]
     #[ssz(skip_serializing)]
