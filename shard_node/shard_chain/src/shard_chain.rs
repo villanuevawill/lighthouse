@@ -174,7 +174,7 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         let spec = &self.spec;
 
         let present_slot = match self.slot_clock.present_slot() {
-            Ok(Some(slot)) => slot,
+            Ok(Some(slot)) => slot.shard_slot(spec.slots_per_epoch, spec.shard_slots_per_epoch),
             _ => return Err(Error::UnableToReadSlot),
         };
 
@@ -192,36 +192,34 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         Ok(())
     }
 
-    // /// Build all of the caches on the current state.
-    // ///
-    // /// Ideally this shouldn't be required, however we leave it here for testing.
-    // pub fn ensure_state_caches_are_built(&self) -> Result<(), Error> {
-    //     self.state.write().build_all_caches(&self.spec)?;
+    /// Build all of the caches on the current state.
+    ///
+    /// Ideally this shouldn't be required, however we leave it here for testing.
+    pub fn ensure_state_caches_are_built(&self) -> Result<(), Error> {
+        self.state.write().build_cache(&self.spec)?;
 
-    //     Ok(())
-    // }
+        Ok(())
+    }
 
-    // /// Returns the validator index (if any) for the given public key.
-    // ///
-    // /// Information is retrieved from the present `beacon_state.validator_registry`.
-    // pub fn validator_index(&self, pubkey: &PublicKey) -> Option<usize> {
-    //     // reference directly to beacon chain parent
-    //     // needs to make sure it is part of this particular shard
-    //     for (i, validator) in self
-    //         .parent_beacon
-    //         .current_state()
-    //         .validator_registry
-    //         .iter()
-    //         .enumerate()
-    //     {
-    //         if validator.pubkey == *pubkey {
-    //             if self.parent_beacon.current_state().get_attestation_duties(i).shard = self.shard {
-    //                 return Some(i);
-    //             }
-    //         }
-    //     }
-    //     None
-    // }
+    /// Returns the validator index (if any) for the given public key.
+    ///
+    /// Information is retrieved from the present `beacon_state.validator_registry`.
+    pub fn validator_index(&self, pubkey: &PublicKey) -> Option<usize> {
+        // reference directly to beacon chain parent
+        for (i, validator) in self
+            .parent_beacon
+            .head()
+            .beacon_state
+            .validator_registry
+            .iter()
+            .enumerate()
+        {
+            if validator.pubkey == *pubkey {
+                return Some(i);
+            }
+        }
+        None
+    }
 
     // /// Reads the slot clock, returns `None` if the slot is unavailable.
     // ///
