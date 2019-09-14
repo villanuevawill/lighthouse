@@ -263,25 +263,21 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         self.state.read().slot
     }
 
-    // /// Returns the block proposer for a given slot.
-    // ///
-    // /// Information is read from the present `beacon_state` shuffling, only information from the
-    // /// present epoch is available.
-    // pub fn block_proposer(&self, slot: Slot, shard: Shard) -> Result<usize, Error> {
-    //     // Update to go to beacon chain for this information
-    //     // Ensures that the present state has been advanced to the present slot, skipping slots if
-    //     // blocks are not present.
-    //     // self.catchup_state()?;
+    /// Returns the block proposer for a given slot.
+    ///
+    /// Information is read from the present `beacon_state`
+    pub fn block_proposer(&self, slot: ShardSlot, shard: u64) -> Result<usize, Error> {
+        // Ensures that the present state has been advanced to the present slot, skipping slots if
+        // blocks are not present.
+        self.catchup_state()?;
 
-    //     // // TODO: permit lookups of the proposer at any slot.
-    //     let index = self.parent_beacon.get_shard_proposer_index(
-    //         slot,
-    //         shard,
-    //         &self.spec,
-    //     )?;
+        let index = self.parent_beacon.current_state().get_shard_proposer_index(
+            shard,
+            slot,
+        )?;
 
-    //     Ok(index)
-    // }
+        Ok(index)
+    }
 
     // /// Produce an `AttestationData` that is valid for the present `slot` and given `shard`.
     // ///
