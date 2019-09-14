@@ -19,6 +19,7 @@ pub enum ShardChainError {
     InsufficientValidators,
     BadRecentBlockRoots,
     UnableToReadSlot,
+    BeaconStateError(BeaconStateError),
     ShardStateError(ShardStateError),
     DBInconsistent(String),
     DBError(shard_store::Error),
@@ -44,8 +45,11 @@ pub enum BlockProductionError {
     ShardSlotProcessingError(ShardSlotProcessingError),
     BlockProcessingError(BlockProcessingError),
     ShardStateError(ShardStateError),
+    BeaconStateError(BeaconStateError),
 }
 
 easy_from_to!(BlockProcessingError, BlockProductionError);
 easy_from_to!(ShardStateError, BlockProductionError);
+easy_from_to!(BeaconStateError, BlockProductionError);
+easy_from_to!(BeaconStateError, ShardChainError);
 easy_from_to!(ShardSlotProcessingError, BlockProductionError);

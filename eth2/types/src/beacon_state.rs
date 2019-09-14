@@ -484,21 +484,21 @@ impl<T: EthSpec> BeaconState<T> {
 
     pub fn get_shard_proposer_index(
         &self,
-        epoch: Epoch,
         shard: u64,
         slot: ShardSlot,
     ) -> Result<usize, Error> {
         let spec = T::default_spec();
         let current_epoch = self.current_epoch();
+        let target_epoch = slot.epoch(spec.shard_slots_per_epoch, spec.shard_slots_per_beacon_slot);
         let current_period = current_epoch.period(spec.epochs_per_shard_period);
-        let target_period = epoch.period(spec.epochs_per_shard_period);
+        let target_period = target_epoch.period(spec.epochs_per_shard_period);
 
         if target_period != current_period {
             return Err(BeaconStateError::PeriodOutOfBounds);
         }
 
-        let seed = self.generate_seed(epoch, &spec)?;
-        let committee = self.get_shard_committee(epoch, shard)?.committee;
+        let seed = self.generate_seed(target_epoch, &spec)?;
+        let committee = self.get_shard_committee(target_epoch, shard)?.committee;
 
         let mut i = 0;
         Ok(loop {
