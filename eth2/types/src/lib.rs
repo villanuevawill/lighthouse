@@ -77,7 +77,7 @@ pub use crate::shard_attestation_data::ShardAttestationData;
 pub use crate::shard_block::ShardBlock;
 pub use crate::shard_block_header::ShardBlockHeader;
 pub use crate::shard_pending_attestation::ShardPendingAttestation;
-pub use crate::shard_state::ShardState;
+pub use crate::shard_state::{Error as ShardStateError, *};
 pub use crate::slot_epoch::{Epoch, Slot, ShardSlot};
 pub use crate::slot_height::{SlotHeight, ShardSlotHeight};
 pub use crate::transfer::Transfer;
