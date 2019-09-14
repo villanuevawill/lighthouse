@@ -5,3 +5,28 @@ authors = ["will <wvillanu89@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+beacon_chain =  { path = "../../beacon_node/beacon_chain" }
+bls = { path = "../../eth2/utils/bls" }
+boolean-bitfield = { path = "../../eth2/utils/boolean-bitfield" }
+shard_store = { path = "../shard_store" }
+failure = "0.1"
+failure_derive = "0.1"
+hashing = { path = "../../eth2/utils/hashing" }
+parking_lot = "0.7"
+prometheus = "^0.6"
+log = "0.4"
+shard_operation_pool = { path = "../../eth2/shard_operation_pool" }
+env_logger = "0.6"
+serde = "1.0"
+serde_derive = "1.0"
+serde_json = "1.0"
+slot_clock = { path = "../../eth2/utils/slot_clock" }
+eth2_ssz = { path = "../../eth2/utils/ssz" }
+eth2_ssz_derive = { path = "../../eth2/utils/ssz_derive" }
+state_processing = { path = "../../eth2/state_processing" }
+tree_hash = { path = "../../eth2/utils/tree_hash" }
+types = { path = "../../eth2/types" }
+shard_lmd_ghost = { path = "../../eth2/shard_lmd_ghost" }
+
+[dev-dependencies]
+rand = "0.5.5"

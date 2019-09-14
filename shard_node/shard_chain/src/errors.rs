@@ -1,5 +1,5 @@
-use crate::fork_choice::Error as ForkChoiceError;
-use crate::metrics::Error as MetricsError;
+// use crate::fork_choice::Error as ForkChoiceError;
+// use crate::metrics::Error as MetricsError;
 use state_processing::BlockProcessingError;
 use state_processing::SlotProcessingError;
 use types::*;
@@ -19,23 +19,23 @@ pub enum ShardChainError {
     InsufficientValidators,
     BadRecentBlockRoots,
     UnableToReadSlot,
-    ShardStateError(BeaconStateError),
+    ShardStateError(ShardStateError),
     DBInconsistent(String),
-    DBError(store::Error),
-    ForkChoiceError(ForkChoiceError),
+    DBError(shard_store::Error),
+    // ForkChoiceError(ForkChoiceError),
     MissingShardBlock(Hash256),
     MissingShardState(Hash256),
     SlotProcessingError(SlotProcessingError),
-    MetricsError(String),
+    // MetricsError(String),
 }
 
 easy_from_to!(SlotProcessingError, ShardChainError);
 
-impl From<MetricsError> for ShardChainError {
-    fn from(e: MetricsError) -> ShardChainError {
-        ShardChainError::MetricsError(format!("{:?}", e))
-    }
-}
+// impl From<MetricsError> for ShardChainError {
+//     fn from(e: MetricsError) -> ShardChainError {
+//         ShardChainError::MetricsError(format!("{:?}", e))
+//     }
+// }
 
 #[derive(Debug, PartialEq)]
 pub enum BlockProductionError {
