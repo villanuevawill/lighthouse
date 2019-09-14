@@ -1,14 +1,14 @@
 mod reduced_tree;
 
 use std::sync::Arc;
-use store::Store;
-use types::{ShardBlock, EthSpec, Hash256, Slot};
+use shard_store::Store;
+use types::{ShardBlock, ShardSpec, Hash256, ShardSlot};
 
 pub use reduced_tree::ThreadSafeReducedTree;
 
 pub type Result<T> = std::result::Result<T, String>;
 
-pub trait LmdGhost<S: Store, E: EthSpec>: Send + Sync {
+pub trait LmdGhost<S: Store, E: ShardSpec>: Send + Sync {
     /// Create a new instance, with the given `store` and `finalized_root`.
     fn new(store: Arc<S>, finalized_block: &ShardBlock, finalized_root: Hash256) -> Self;
 
@@ -18,7 +18,7 @@ pub trait LmdGhost<S: Store, E: EthSpec>: Send + Sync {
         &self,
         validator_index: usize,
         block_hash: Hash256,
-        block_slot: Slot,
+        block_slot: ShardSlot,
     ) -> Result<()>;
 
     /// Process a block that was seen on the network.
@@ -28,7 +28,7 @@ pub trait LmdGhost<S: Store, E: EthSpec>: Send + Sync {
     /// (in block height).
     fn find_head<F>(
         &self,
-        start_block_slot: Slot,
+        start_block_slot: ShardSlot,
         start_block_root: Hash256,
         weight: F,
     ) -> Result<Hash256>
