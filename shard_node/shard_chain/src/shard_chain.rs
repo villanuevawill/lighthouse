@@ -221,43 +221,47 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         None
     }
 
-    // /// Reads the slot clock, returns `None` if the slot is unavailable.
-    // ///
-    // /// The slot might be unavailable due to an error with the system clock, or if the present time
-    // /// is before genesis (i.e., a negative slot).
-    // ///
-    // /// This is distinct to `present_slot`, which simply reads the latest state. If a
-    // /// call to `read_slot_clock` results in a higher slot than a call to `present_slot`,
-    // /// `self.state` should undergo per slot processing.
-    // pub fn read_slot_clock(&self) -> Option<Slot> {
-    //     match self.slot_clock.present_slot() {
-    //         Ok(Some(some_slot)) => Some(some_slot),
-    //         Ok(None) => None,
-    //         _ => None,
-    //     }
-    // }
+    /// Reads the slot clock and returns a ShardSlot, returns `None` if the slot is unavailable.
+    ///
+    /// The slot might be unavailable due to an error with the system clock, or if the present time
+    /// is before genesis (i.e., a negative slot).
+    ///
+    /// This is distinct to `present_slot`, which simply reads the latest state. If a
+    /// call to `read_slot_clock` results in a higher slot than a call to `present_slot`,
+    /// `self.state` should undergo per slot processing.
+    pub fn read_slot_clock(&self) -> Option<ShardSlot> {
+        let spec = &self.spec;
+        
+        match self.slot_clock.present_slot() {
+            Ok(Some(some_slot)) => Some(some_slot.shard_slot(spec.slots_per_epoch, spec.shard_slots_per_epoch)),
+            Ok(None) => None,
+            _ => None,
+        }
+    }
 
-    // /// Reads the slot clock (see `self.read_slot_clock()` and returns the number of slots since
-    // /// genesis.
-    // pub fn slots_since_genesis(&self) -> Option<SlotHeight> {
-    //     let now = self.read_slot_clock()?;
-    //     let genesis_slot = self.spec.genesis_slot;
+    /// Reads the slot clock (see `self.read_slot_clock()` and returns the number of slots since
+    /// genesis.
+    pub fn slots_since_genesis(&self) -> Option<ShardSlotHeight> {
+        let now = self.read_slot_clock()?;
+        let spec = &self.spec;
+        let genesis_slot = spec.phase_1_fork_epoch * spec.shard_slots_per_epoch;
 
-    //     if now < genesis_slot {
-    //         None
-    //     } else {
-    //         Some(SlotHeight::from(now.as_u64() - genesis_slot.as_u64()))
-    //     }
-    // }
 
-    // /// Returns slot of the present state.
-    // ///
-    // /// This is distinct to `read_slot_clock`, which reads from the actual system clock. If
-    // /// `self.state` has not been transitioned it is possible for the system clock to be on a
-    // /// different slot to what is returned from this call.
-    // pub fn present_slot(&self) -> Slot {
-    //     self.state.read().slot
-    // }
+        if now < genesis_slot {
+            None
+        } else {
+            Some(ShardSlotHeight::from(now.as_u64() - genesis_slot))
+        }
+    }
+
+    /// Returns slot of the present state.
+    ///
+    /// This is distinct to `read_slot_clock`, which reads from the actual system clock. If
+    /// `self.state` has not been transitioned it is possible for the system clock to be on a
+    /// different slot to what is returned from this call.
+    pub fn present_slot(&self) -> ShardSlot {
+        self.state.read().slot
+    }
 
     // /// Returns the block proposer for a given slot.
     // ///
