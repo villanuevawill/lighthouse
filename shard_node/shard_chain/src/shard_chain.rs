@@ -169,29 +169,28 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         self.canonical_head.read().shard_block.slot
     }
 
-    // /// Ensures the current canonical `BeaconState` has been transitioned to match the `slot_clock`.
-    // pub fn catchup_state(&self) -> Result<(), Error> {
-    //     let spec = &self.spec;
+    /// Ensures the current canonical `ShardState` has been transitioned to match the `slot_clock`.
+    pub fn catchup_state(&self) -> Result<(), Error> {
+        let spec = &self.spec;
 
-    //     let present_slot = match self.slot_clock.present_slot() {
-    //         Ok(Some(slot)) => slot,
-    //         _ => return Err(Error::UnableToReadSlot),
-    //     };
+        let present_slot = match self.slot_clock.present_slot() {
+            Ok(Some(slot)) => slot,
+            _ => return Err(Error::UnableToReadSlot),
+        };
 
-    //     if self.state.read().slot < present_slot {
-    //         let mut state = self.state.write();
+        if self.state.read().slot < present_slot {
+            let mut state = self.state.write();
 
-    //         // If required, transition the new state to the present slot.
-    //         for _ in state.slot.as_u64()..present_slot.as_u64() {
-    //             // per_slot_processing(&mut *state, spec)?;
-    //             // logic here to manage everything... add this in
-    //         }
+            // If required, transition the new state to the present slot.
+            for _ in state.slot.as_u64()..present_slot.as_u64() {
+                per_shard_slot_processing(&mut *state, spec)?;
+            }
 
-    //         state.build_all_caches(spec)?;
-    //     }
+            state.build_cache(spec)?;
+        }
 
-    //     Ok(())
-    // }
+        Ok(())
+    }
 
     // /// Build all of the caches on the current state.
     // ///
