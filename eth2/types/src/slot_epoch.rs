@@ -70,6 +70,10 @@ impl Slot {
         SlotHeight::from(self.0.saturating_sub(genesis_slot.as_u64()))
     }
 
+    pub fn shard_slot(self, slots_per_epoch: u64, shard_slots_per_epoch: u64) -> ShardSlot {
+        ShardSlot::from(self.0 * shard_slots_per_epoch / slots_per_epoch)
+    }
+
     pub fn max_value() -> Slot {
         Slot(u64::max_value())
     }
