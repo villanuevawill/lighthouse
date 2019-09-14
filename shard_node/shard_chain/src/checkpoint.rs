@@ -1,19 +1,16 @@
 use serde_derive::Serialize;
 use ssz_derive::{Decode, Encode};
-use types::{ShardBlock, ShardState, EthSpec, Hash256};
+use types::{ShardBlock, ShardState, ShardSpec, Hash256};
 
-/// Represents some block and it's associated state. Generally, this will be used for tracking the
-/// head, justified head and finalized head.
 #[derive(Clone, Serialize, PartialEq, Debug, Encode, Decode)]
-pub struct CheckPoint<E: EthSpec> {
+pub struct CheckPoint<E: ShardSpec> {
     pub shard_block: ShardBlock,
     pub shard_block_root: Hash256,
     pub shard_state: ShardState<E>,
     pub shard_state_root: Hash256,
 }
 
-impl<E: EthSpec> CheckPoint<E> {
-    /// Create a new checkpoint.
+impl<E: ShardSpec> CheckPoint<E> {
     pub fn new(
         shard_block: ShardBlock,
         shard_block_root: Hash256,
@@ -28,7 +25,6 @@ impl<E: EthSpec> CheckPoint<E> {
         }
     }
 
-    /// Update all fields of the checkpoint.
     pub fn update(
         &mut self,
         shard_block: ShardBlock,
