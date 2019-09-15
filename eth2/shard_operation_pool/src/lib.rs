@@ -63,22 +63,22 @@ impl<T: ShardSpec> OperationPool<T> {
         self.attestations.read().values().map(Vec::len).sum()
     }
 
-    /// Get a list of attestations for inclusion in a block.
-    pub fn get_attestations<U: EthSpec>(&self, state: &ShardState<T>, beacon_state: &BeaconState<U>, spec: &ChainSpec) -> Vec<ShardAttestation> {
-        // enforce the right beacon state is being passed through
+    /// Get attestation with most attesters for inclusion in a block
+    pub fn get_attestation<U: EthSpec>(&self, state: &ShardState<T>, beacon_state: &BeaconState<U>, spec: &ChainSpec) -> ShardAttestation {
         let attesting_slot = ShardSlot::from(state.slot - 1);
         let epoch = attesting_slot.epoch(spec.slots_per_epoch, spec.shard_slots_per_beacon_slot);
         let domain_bytes = AttestationId::compute_domain_bytes(epoch, attesting_slot, beacon_state, spec);
         let reader = self.attestations.read();
 
-        let attestations: Vec<ShardAttestation> = reader
+        let mut attestations: Vec<ShardAttestation> = reader
             .iter()
             .filter(|(key, _)| key.domain_bytes_match(&domain_bytes))
             .flat_map(|(_, attestations)| attestations)
             .cloned()
             .collect();
 
-        attestations
+        attestations.sort_by(|a, b| b.aggregation_bitfield.num_set_bits().cmp(&a.aggregation_bitfield.num_set_bits()));
+        (&attestations[0]).clone()
     }
 
     pub fn prune_attestations(&self, finalized_state: &ShardState<T>) {
@@ -88,20 +88,6 @@ impl<T: ShardSpec> OperationPool<T> {
             })
         });
     }
-}
-
-fn filter_limit_operations<'a, T: 'a, I, F>(operations: I, filter: F, limit: u64) -> Vec<T>
-where
-    I: IntoIterator<Item = &'a T>,
-    F: Fn(&T) -> bool,
-    T: Clone,
-{
-    operations
-        .into_iter()
-        .filter(|x| filter(*x))
-        .take(limit as usize)
-        .cloned()
-        .collect()
 }
 
 impl<T: ShardSpec + Default> PartialEq for OperationPool<T> {

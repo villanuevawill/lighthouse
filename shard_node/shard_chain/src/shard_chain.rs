@@ -452,70 +452,64 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         Ok(BlockProcessingOutcome::Processed { block_root })
     }
 
-    // /// Produce a new block at the present slot.
-    // ///
-    // /// The produced block will not be inherently valid, it must be signed by a block producer.
-    // /// Block signing is out of the scope of this function and should be done by a separate program.
-    // pub fn produce_block(
-    //     &self,
-    // ) -> Result<(ShardBlock, ShardState<T::EthSpec>), BlockProductionError> {
-    //     let state = self.state.read().clone();
-    //     let slot = self
-    //         .read_slot_clock()
-    //         .ok_or_else(|| BlockProductionError::UnableToReadSlot)?;
+    /// Produce a new block at the present slot.
+    ///
+    /// The produced block will not be inherently valid, it must be signed by a block producer.
+    /// Block signing is out of the scope of this function and should be done by a separate program.
+    pub fn produce_block(
+        &self,
+    ) -> Result<(ShardBlock, ShardState<T::ShardSpec>), BlockProductionError> {
+        let state = self.state.read().clone();
+        let slot = self
+            .read_slot_clock()
+            .ok_or_else(|| BlockProductionError::UnableToReadSlot)?;
 
-    //     self.produce_block_on_state(state, slot)
-    // }
+        self.produce_block_on_state(state, slot)
+    }
 
-    // /// Produce a block for some `slot` upon the given `state`.
-    // ///
-    // /// Typically the `self.produce_block()` function should be used, instead of calling this
-    // /// function directly. This function is useful for purposefully creating forks or blocks at
-    // /// non-current slots.
-    // ///
-    // /// The given state will be advanced to the given `produce_at_slot`, then a block will be
-    // /// produced at that slot height.
-    // pub fn produce_block_on_state(
-    //     &self,
-    //     mut state: ShardState<T::EthSpec>,
-    //     produce_at_slot: Slot,
-    // ) -> Result<(ShardBlock, ShardState<T::EthSpec>), BlockProductionError> {
-    //     // If required, transition the new state to the present slot.
-    //     while state.slot < produce_at_slot {
-    //         per_slot_processing(&mut state, &self.spec)?;
-    //     }
+    /// Produce a block for some `slot` upon the given `state`.
+    ///
+    /// Typically the `self.produce_block()` function should be used, instead of calling this
+    /// function directly. This function is useful for purposefully creating forks or blocks at
+    /// non-current slots.
+    ///
+    /// The given state will be advanced to the given `produce_at_slot`, then a block will be
+    /// produced at that slot height.
+    pub fn produce_block_on_state(
+        &self,
+        mut state: ShardState<T::ShardSpec>,
+        produce_at_slot: ShardSlot,
+    ) -> Result<(ShardBlock, ShardState<T::ShardSpec>), BlockProductionError> {
+        // If required, transition the new state to the present slot.
+        while state.slot < produce_at_slot {
+            per_shard_slot_processing(&mut state, &self.spec)?;
+        }
 
-    //     let previous_block_root = if state.slot > 0 {
-    //         *state
-    //             .get_block_root(state.slot - 1)
-    //             .map_err(|_| BlockProductionError::UnableToGetBlockRootFromState)?
-    //     } else {
-    //         state.latest_block_header.canonical_root()
-    //     };
+        let spec = &self.spec;
+        let parent_root = state.latest_block_header.canonical_root();
+        let beacon_state = self.parent_beacon.current_state();
+        let beacon_block_root_epoch = state.latest_block_header.slot.epoch(spec.slots_per_epoch, spec.shard_slots_per_beacon_slot);
+        let beacon_block_root = beacon_state.get_block_root_at_epoch(beacon_block_root_epoch)?.clone();
 
-    //     let mut graffiti: [u8; 32] = [0; 32];
-    //     graffiti.copy_from_slice(GRAFFITI.as_bytes());
+        let mut graffiti: [u8; 32] = [0; 32];
+        graffiti.copy_from_slice(GRAFFITI.as_bytes());
 
-    //     let mut block = ShardBlock {
-    //         slot: state.slot,
-    //         previous_block_root,
-    //         state_root: Hash256::zero(), // Updated after the state is calculated.
-    //         signature: Signature::empty_signature(), // To be completed by a validator.
-    //         // need to add the attestations here
-    //         body: ShardBlockBody {
-    //             graffiti,
-    //             attestations: self.op_pool.get_attestations(&state, &self.spec),
-    //         },
-    //     };
+        let mut block = ShardBlock {
+            shard: state.shard,
+            slot: state.slot,
+            beacon_block_root,
+            parent_root,
+            state_root: Hash256::zero(),
+            attestation: self.op_pool.get_attestation(&state, &self.parent_beacon.current_state(), spec),
+            signature: Signature::empty_signature(),
+        };
 
-    //     per_block_processing_without_verifying_block_signature(&mut state, &block, &self.spec)?;
+        per_shard_block_processing(&beacon_state, &mut state, &block, spec);
+        let state_root = state.canonical_root();
+        block.state_root = state_root;
 
-    //     let state_root = state.canonical_root();
-
-    //     block.state_root = state_root;
-
-    //     Ok((block, state))
-    // }
+        Ok((block, state))
+    }
 
     /// Execute the fork choice algorithm and enthrone the result as the canonical head.
     pub fn fork_choice(&self) -> Result<(), Error> {
