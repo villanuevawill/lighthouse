@@ -1,11 +1,11 @@
 use crate::{ShardChain, ShardChainTypes, ShardChainError};
 use beacon_chain::BeaconChainTypes;
 use shard_lmd_ghost::LmdGhost;
-use state_processing::common::get_attesting_indices_unsorted;
+use state_processing::common::get_shard_attesting_indices_unsorted;
 use std::sync::Arc;
 use store::{Error as BeaconStoreError, Store as BeaconStore};
 use shard_store::{Error as StoreError, Store};
-use types::{Attestation, BeaconBlock, BeaconState, BeaconStateError, ShardBlock, ShardSlot, ShardState, ShardStateError, Epoch, EthSpec, ShardSpec, Hash256};
+use types::{ShardAttestation, BeaconBlock, BeaconState, BeaconStateError, ShardBlock, ShardSlot, ShardState, ShardStateError, Epoch, EthSpec, ShardSpec, Hash256};
 
 type Result<T> = std::result::Result<T, Error>;
 
@@ -27,7 +27,7 @@ pub struct ForkChoice<T: ShardChainTypes> {
     genesis_block_root: Hash256,
 }
 
-impl<T: ShardChainTypes> ForkChoice<T> {
+impl<T: ShardChainTypes>ForkChoice<T> {
     pub fn new(
         store: Arc<T::Store>,
         genesis_block: &ShardBlock,
@@ -75,56 +75,47 @@ impl<T: ShardChainTypes> ForkChoice<T> {
             .map_err(Into::into)
     }
 
-    // /// Process all attestations in the given `block`.
-    // ///
-    // /// Assumes the block (and therefore it's attestations) are valid. It is a logic error to
-    // /// provide an invalid block.
-    // pub fn process_block(
-    //     &self,
-    //     beacon_state: &BeaconState,
-    //     block: &ShardBlock,
-    //     block_root: Hash256,
-    // ) -> Result<()> {
-    //     // Note: we never count the block as a latest message, only attestations.
-    //     //
-    //     // I (Paul H) do not have an explicit reference to this, but I derive it from this
-    //     // document:
-    //     //
-    //     // https://github.com/ethereum/eth2.0-specs/blob/v0.7.0/specs/core/0_fork-choice.md
-    //     for attestation in &block.body.attestations {
-    //         self.process_attestation_from_block(beacon_state, attestation, block)?;
-    //     }
+    /// Process all attestations in the given `block`.
+    ///
+    /// Assumes the block (and therefore it's attestations) are valid. It is a logic error to
+    /// provide an invalid block.
+    pub fn process_block<P: EthSpec>(
+        &self,
+        beacon_state: &BeaconState<P>,
+        block: &ShardBlock,
+        block_root: Hash256,
+    ) -> Result<()> {
+        self.process_attestation_from_block(beacon_state, block.attestation, block)?;
+        self.backend.process_block(block, block_root)?;
 
-    //     self.backend.process_block(block, block_root)?;
+        Ok(())
+    }
 
-    //     Ok(())
-    // }
+    fn process_attestation_from_block<P: EthSpec>(
+        &self,
+        beacon_state: &BeaconState<P>,
+        attestation: &ShardAttestation,
+        block: &ShardBlock
+    ) -> Result<()> {
+        // Note: `get_attesting_indices_unsorted` requires that the beacon state caches be built.
+        let validator_indices = get_shard_attesting_indices_unsorted(
+            block.slot,
+            beacon_state,
+            &attestation.data,
+            &attestation.aggregation_bitfield,
+        )?;
 
-    // fn process_attestation_from_block(
-    //     &self,
-    //     beacon_state: &BeaconState<T::EthSpec>,
-    //     attestation: &Attestation,
-    //     block: &ShardBlock
-    // ) -> Result<()> {
-    //     // Note: `get_attesting_indices_unsorted` requires that the beacon state caches be built.
-    //     let validator_indices = get_shard_attesting_indices_unsorted(
-    //         block.slot,
-    //         beacon_state,
-    //         &attestation.data,
-    //         &attestation.aggregation_bitfield,
-    //     )?;
+        let block_hash = attestation.data.target_root;
 
-    //     let block_hash = attestation.data.target_root;
+        if block_hash != Hash256::zero() {
+            for validator_index in validator_indices {
+                self.backend
+                    .process_attestation(validator_index, block_hash, block.slot)?;
+            }
+        }
 
-    //     if block_hash != Hash256::zero() {
-    //         for validator_index in validator_indices {
-    //             self.backend
-    //                 .process_attestation(validator_index, block_hash, block.slot)?;
-    //         }
-    //     }
-
-    //     Ok(())
-    // }
+        Ok(())
+    }
 
     // /// Inform the fork choice that the given block (and corresponding root) have been finalized so
     // /// it may prune it's storage.
