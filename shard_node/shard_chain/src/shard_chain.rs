@@ -225,13 +225,6 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         Ok(())
     }
 
-    pub fn get_beacon_state<U: EthSpec>(&self, state_root: Hash256) -> Result<Option<BeaconState<U>>, Error> {
-        match self.parent_beacon.store.get(&state_root) {
-            Ok(shard_block) => Ok(shard_block),
-            Err(e) => Err(Error::BeaconDBError(e)),
-        }
-    }
-
     /// Returns the validator index (if any) for the given public key.
     ///
     /// Information is retrieved from the present `beacon_state.validator_registry`.
@@ -513,34 +506,65 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
     //     Ok((block, state))
     // }
 
-    // /// Execute the fork choice algorithm and enthrone the result as the canonical head.
-    // /// Update the canonical head to `new_head`.
-    // fn update_canonical_head(&self, new_head: CheckPoint<T::EthSpec>) -> Result<(), Error> {
-    //     // Update the checkpoint that stores the head of the chain at the time it received the
-    //     // block.
-    //     *self.canonical_head.write() = new_head;
+    /// Execute the fork choice algorithm and enthrone the result as the canonical head.
+    pub fn fork_choice(&self) -> Result<(), Error> {
+        // Determine the root of the block that is the head of the chain.
+        let shard_block_root = self.fork_choice.find_head(&self)?;
 
-    //     // Update the always-at-the-present-slot state we keep around for performance gains.
-    //     *self.state.write() = {
-    //         let mut state = self.canonical_head.read().shard_state.clone();
+        // If a new head was chosen.
+        if shard_block_root != self.head().shard_block_root {
+            let shard_block: ShardBlock = self
+                .store
+                .get(&shard_block_root)?
+                .ok_or_else(|| Error::MissingShardBlock(shard_block_root))?;
 
-    //         let present_slot = match self.slot_clock.present_slot() {
-    //             Ok(Some(slot)) => slot,
-    //             _ => return Err(Error::UnableToReadSlot),
-    //         };
+            let shard_state_root = shard_block.state_root;
+            let shard_state: ShardState<T::ShardSpec> = self
+                .store
+                .get(&shard_state_root)?
+                .ok_or_else(|| Error::MissingShardState(shard_state_root))?;
 
-    //         // If required, transition the new state to the present slot.
-    //         for _ in state.slot.as_u64()..present_slot.as_u64() {
-    //             per_slot_processing(&mut state, &self.spec)?;
-    //         }
+            self.update_canonical_head(CheckPoint {
+                shard_block: shard_block,
+                shard_block_root,
+                shard_state,
+                shard_state_root,
+            })?;
 
-    //         state.build_all_caches(&self.spec)?;
+            Ok(())
+        } else {
+            Ok(())
+        }
+    }
 
-    //         state
-    //     };
+    /// Execute the fork choice algorithm and enthrone the result as the canonical head.
+    /// Update the canonical head to `new_head`.
+    fn update_canonical_head(&self, new_head: CheckPoint<T::ShardSpec>) -> Result<(), Error> {
+        // Update the checkpoint that stores the head of the chain at the time it received the
+        // block.
+        *self.canonical_head.write() = new_head;
 
-    //     Ok(())
-    // }
+        // Update the always-at-the-present-slot state we keep around for performance gains.
+        *self.state.write() = {
+            let mut state = self.canonical_head.read().shard_state.clone();
+
+            let present_slot = match self.slot_clock.present_slot() {
+                Ok(Some(slot)) => slot,
+                _ => return Err(Error::UnableToReadSlot),
+            };
+
+            // If required, transition the new state to the present slot.
+            for _ in state.slot.as_u64()..present_slot.as_u64() {
+                per_shard_slot_processing(&mut state, &self.spec)?;
+            }
+
+            state.build_cache(&self.spec)?;
+
+            state
+        };
+
+        Ok(())
+    }
 
     // /// Called after `self` has had a new block finalized.
     // ///
