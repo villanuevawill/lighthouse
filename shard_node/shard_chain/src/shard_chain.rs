@@ -330,20 +330,17 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
     //     })
     // }
 
-    // /// Accept a new attestation from the network.
-    // ///
-    // /// If valid, the attestation is added to the `op_pool` and aggregated with another attestation
-    // /// if possible.
-    // pub fn process_attestation(
-    //     &self,
-    //     attestation: Attestation,
-    // ) -> Result<(), AttestationValidationError> {
-    //     let result = self
-    //         .op_pool
-    //         .insert_attestation(attestation, &*self.state.read(), &self.spec);
-
-    //     result
-    // }
+    /// Accept a new attestation from the network.
+    ///
+    /// If valid, the attestation is added to the `op_pool` and aggregated with another attestation
+    /// if possible.
+    pub fn process_attestation(
+        &self,
+        attestation: ShardAttestation,
+    ) -> () {
+        self.op_pool
+            .insert_attestation(attestation, &self.parent_beacon.current_state(), &self.spec);
+    }
 
     /// Accept some block and attempt to add it to block DAG.
     ///
