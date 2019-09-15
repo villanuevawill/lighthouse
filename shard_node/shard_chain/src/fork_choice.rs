@@ -40,20 +40,7 @@ impl<T: ShardChainTypes>ForkChoice<T> {
     }
 
     pub fn find_head<L: BeaconChainTypes>(&self, chain: &ShardChain<T, L>) -> Result<Hash256> {
-        let current_state = chain.current_state();
-        let beacon_root = current_state.latest_block_header.beacon_block_root;
-        let beacon_block: BeaconBlock = chain
-            .parent_beacon
-            .store
-            .get(&beacon_root)?
-            .ok_or_else(|| Error::MissingBeaconBlock(beacon_root))?;
-
-        let beacon_state: BeaconState<L::EthSpec> = chain
-            .parent_beacon
-            .store
-            .get(&beacon_block.state_root)?
-            .ok_or_else(|| Error::MissingBeaconState(beacon_block.state_root))?;
-
+        let beacon_state = chain.parent_beacon.current_state();
         let current_crosslink = beacon_state.get_current_crosslink(chain.shard)?;
         // Spec needs an update for crosslinks to hold the end shard_block_root
         // For now, we will just assume the latest block hash is included and add the
