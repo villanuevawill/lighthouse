@@ -11,6 +11,7 @@ use state_processing::{
     per_shard_slot_processing, ShardBlockProcessingError,
 };
 use std::sync::Arc;
+use store::{Store as BeaconStore, Error as BeaconDBError};
 use shard_store::iter::{BestBlockRootsIterator, BlockIterator, BlockRootsIterator, StateRootsIterator};
 use shard_store::{Error as DBError, Store};
 use tree_hash::TreeHash;
@@ -63,6 +64,7 @@ pub struct ShardChain<T: ShardChainTypes, L: BeaconChainTypes> {
     canonical_head: RwLock<CheckPoint<T::ShardSpec>>,
     state: RwLock<ShardState<T::ShardSpec>>,
     genesis_block_root: Hash256,
+    pub crosslink_root: Hash256,
     pub fork_choice: ForkChoice<T>,
 }
 
@@ -104,6 +106,7 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
             state: RwLock::new(genesis_state),
             canonical_head,
             genesis_block_root,
+            crosslink_root: Hash256::default(),
             fork_choice: ForkChoice::new(store.clone(), &genesis_block, genesis_block_root),
             store,
         })
@@ -286,6 +289,17 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         self.state.read().slot
     }
 
+    pub fn check_for_new_crosslink(mut self) -> Result<(), Error> {
+        let beacon_state = self.parent_beacon.current_state();
+        let crosslink_root = beacon_state.get_current_crosslink(self.shard)?.crosslink_data_root;
+        let current_crossslink_root = self.crosslink_root;
+        if crosslink_root != current_crossslink_root {
+            self.crosslink_root = crosslink_root;
+            self.after_crosslink(crosslink_root);
+        }
+        Ok(())
+    }
+
     /// Returns the block proposer for a given slot.
     ///
     /// Information is read from the present `beacon_state`
@@ -329,20 +343,17 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
     //     })
     // }
 
-    // /// Accept a new attestation from the network.
-    // ///
-    // /// If valid, the attestation is added to the `op_pool` and aggregated with another attestation
-    // /// if possible.
-    // pub fn process_attestation(
-    //     &self,
-    //     attestation: Attestation,
-    // ) -> Result<(), AttestationValidationError> {
-    //     let result = self
-    //         .op_pool
-    //         .insert_attestation(attestation, &*self.state.read(), &self.spec);
-
-    //     result
-    // }
+    /// Accept a new attestation from the network.
+    ///
+    /// If valid, the attestation is added to the `op_pool` and aggregated with another attestation
+    /// if possible.
+    pub fn process_attestation(
+        &self,
+        attestation: ShardAttestation,
+    ) -> () {
+        self.op_pool
+            .insert_attestation(attestation, &self.parent_beacon.current_state(), &self.spec);
+    }
 
     /// Accept some block and attempt to add it to block DAG.
     ///
@@ -430,13 +441,13 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         
 
         // Register the new block with the fork choice service.
-        // self.fork_choice.process_block(&state, &block, block_root)?;
+        self.fork_choice.process_block(&beacon_state, &block, block_root)?;
 
         // Execute the fork choice algorithm, enthroning a new head if discovered.
         //
         // Note: in the future we may choose to run fork-choice less often, potentially based upon
         // some heuristic around number of attestations seen for the block.
-        // self.fork_choice()?;
+        self.fork_choice()?;
         Ok(BlockProcessingOutcome::Processed { block_root })
     }
 
@@ -505,63 +516,81 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
     //     Ok((block, state))
     // }
 
-    // /// Execute the fork choice algorithm and enthrone the result as the canonical head.
-    // /// Update the canonical head to `new_head`.
-    // fn update_canonical_head(&self, new_head: CheckPoint<T::EthSpec>) -> Result<(), Error> {
-    //     // Update the checkpoint that stores the head of the chain at the time it received the
-    //     // block.
-    //     *self.canonical_head.write() = new_head;
+    /// Execute the fork choice algorithm and enthrone the result as the canonical head.
+    pub fn fork_choice(&self) -> Result<(), Error> {
+        // Determine the root of the block that is the head of the chain.
+        self.check_for_new_crosslink();
+        let shard_block_root = self.fork_choice.find_head(&self)?;
 
-    //     // Update the always-at-the-present-slot state we keep around for performance gains.
-    //     *self.state.write() = {
-    //         let mut state = self.canonical_head.read().shard_state.clone();
+        // If a new head was chosen.
+        if shard_block_root != self.head().shard_block_root {
+            let shard_block: ShardBlock = self
+                .store
+                .get(&shard_block_root)?
+                .ok_or_else(|| Error::MissingShardBlock(shard_block_root))?;
 
-    //         let present_slot = match self.slot_clock.present_slot() {
-    //             Ok(Some(slot)) => slot,
-    //             _ => return Err(Error::UnableToReadSlot),
-    //         };
+            let shard_state_root = shard_block.state_root;
+            let shard_state: ShardState<T::ShardSpec> = self
+                .store
+                .get(&shard_state_root)?
+                .ok_or_else(|| Error::MissingShardState(shard_state_root))?;
 
-    //         // If required, transition the new state to the present slot.
-    //         for _ in state.slot.as_u64()..present_slot.as_u64() {
-    //             per_slot_processing(&mut state, &self.spec)?;
-    //         }
+            self.update_canonical_head(CheckPoint {
+                shard_block: shard_block,
+                shard_block_root,
+                shard_state,
+                shard_state_root,
+            })?;
 
-    //         state.build_all_caches(&self.spec)?;
+            Ok(())
+        } else {
+            Ok(())
+        }
+    }
 
-    //         state
-    //     };
+    /// Execute the fork choice algorithm and enthrone the result as the canonical head.
+    /// Update the canonical head to `new_head`.
+    fn update_canonical_head(&self, new_head: CheckPoint<T::ShardSpec>) -> Result<(), Error> {
+        // Update the checkpoint that stores the head of the chain at the time it received the
+        // block.
+        *self.canonical_head.write() = new_head;
 
-    //     Ok(())
-    // }
+        // Update the always-at-the-present-slot state we keep around for performance gains.
+        *self.state.write() = {
+            let mut state = self.canonical_head.read().shard_state.clone();
 
-    // /// Called after `self` has had a new block finalized.
-    // ///
-    // /// Performs pruning and finality-based optimizations.
-    // fn after_finalization(
-    //     &self,
-    //     old_finalized_epoch: Epoch,
-    //     finalized_block_root: Hash256,
-    // ) -> Result<(), Error> {
-    //     // Need to build logic here to manage pruning for shard as well
-    //     // let finalized_block = self
-    //     //     .store
-    //     //     .get::<BeaconBlock>(&finalized_block_root)?
-    //     //     .ok_or_else(|| Error::MissingBeaconBlock(finalized_block_root))?;
+            let present_slot = match self.slot_clock.present_slot() {
+                Ok(Some(slot)) => slot,
+                _ => return Err(Error::UnableToReadSlot),
+            };
 
-    //     // let new_finalized_epoch = finalized_block.slot.epoch(T::EthSpec::slots_per_epoch());
+            // If required, transition the new state to the present slot.
+            for _ in state.slot.as_u64()..present_slot.as_u64() {
+                per_shard_slot_processing(&mut state, &self.spec)?;
+            }
 
-    //     // if new_finalized_epoch < old_finalized_epoch {
-    //     //     Err(Error::RevertedFinalizedEpoch {
-    //     //         previous_epoch: old_finalized_epoch,
-    //     //         new_epoch: new_finalized_epoch,
-    //     //     })
-    //     // } else {
-    //     //     self.fork_choice
-    //     //         .process_finalization(&finalized_block, finalized_block_root)?;
+            state.build_cache(&self.spec)?;
 
-    //     //     Ok(())
-    //     // }
-    // }
+            state
+        };
+
+        Ok(())
+    }
+
+    /// Called after `self` has found a new crosslink
+    ///
+    /// Performs pruning and fork choice optimizations after recognized crosslinks.
+    fn after_crosslink(&self, crosslink_root: Hash256) -> Result<(), Error> {
+        let crosslink_block = self
+            .store
+            .get::<ShardBlock>(&crosslink_root)?
+            .ok_or_else(|| Error::MissingShardBlock(crosslink_root))?;
+
+        self.fork_choice
+            .process_finalization(&crosslink_block, crosslink_root)?;
+
+        Ok(())
+    }
 
     // /// Returns `true` if the given block root has not been processed.
     // pub fn is_new_block_root(&self, shard_block_root: &Hash256) -> Result<bool, Error> {
@@ -575,15 +604,14 @@ impl From<DBError> for Error {
     }
 }
 
-// impl From<ForkChoiceError> for Error {
-//     fn from(e: ForkChoiceError) -> Error {
-//         Error::ForkChoiceError(e)
-//     }
-// }
+impl From<ForkChoiceError> for Error {
+    fn from(e: ForkChoiceError) -> Error {
+        Error::ForkChoiceError(e)
+    }
+}
 
 impl From<ShardStateError> for Error {
     fn from(e: ShardStateError) -> Error {
         Error::ShardStateError(e)
     }
 }
-

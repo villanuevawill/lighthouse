@@ -8,6 +8,7 @@ edition = "2018"
 beacon_chain =  { path = "../../beacon_node/beacon_chain" }
 bls = { path = "../../eth2/utils/bls" }
 boolean-bitfield = { path = "../../eth2/utils/boolean-bitfield" }
+store = { path = "../../beacon_node/store" }
 shard_store = { path = "../shard_store" }
 failure = "0.1"
 failure_derive = "0.1"
