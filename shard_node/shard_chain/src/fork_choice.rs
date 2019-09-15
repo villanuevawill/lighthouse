@@ -85,7 +85,7 @@ impl<T: ShardChainTypes>ForkChoice<T> {
         block: &ShardBlock,
         block_root: Hash256,
     ) -> Result<()> {
-        self.process_attestation_from_block(beacon_state, block.attestation, block)?;
+        self.process_attestation_from_block(beacon_state, &block.attestation, block)?;
         self.backend.process_block(block, block_root)?;
 
         Ok(())
@@ -99,13 +99,13 @@ impl<T: ShardChainTypes>ForkChoice<T> {
     ) -> Result<()> {
         // Note: `get_attesting_indices_unsorted` requires that the beacon state caches be built.
         let validator_indices = get_shard_attesting_indices_unsorted(
-            block.slot,
+            block.shard,
             beacon_state,
             &attestation.data,
             &attestation.aggregation_bitfield,
         )?;
 
-        let block_hash = attestation.data.target_root;
+        let block_hash = attestation.data.shard_block_root;
 
         if block_hash != Hash256::zero() {
             for validator_index in validator_indices {
