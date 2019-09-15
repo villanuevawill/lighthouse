@@ -519,6 +519,7 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
     /// Execute the fork choice algorithm and enthrone the result as the canonical head.
     pub fn fork_choice(&self) -> Result<(), Error> {
         // Determine the root of the block that is the head of the chain.
+        self.check_for_new_crosslink();
         let shard_block_root = self.fork_choice.find_head(&self)?;
 
         // If a new head was chosen.
