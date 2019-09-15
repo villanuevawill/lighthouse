@@ -298,16 +298,17 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
     ///
     /// Information is read from the present `beacon_state`
     pub fn block_proposer(&self, slot: ShardSlot, shard: u64) -> Result<usize, Error> {
-        // Ensures that the present state has been advanced to the present slot, skipping slots if
-        // blocks are not present.
-        self.catchup_state()?;
-
         let index = self.parent_beacon.current_state().get_shard_proposer_index(
             shard,
             slot,
         )?;
 
         Ok(index)
+    }
+
+    pub fn shard_committee(&self, epoch: Epoch, shard: u64) -> Result<ShardCommittee, Error> {
+        let shard_committee = self.parent_beacon.current_state().get_shard_committee(epoch, shard)?;
+        Ok(shard_committee)
     }
 
     /// Produce an `AttestationData` that is valid for the present `slot` and given `shard`.
