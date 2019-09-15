@@ -17,12 +17,6 @@ use shard_store::{Error as DBError, Store};
 use tree_hash::TreeHash;
 use types::*;
 
-// Text included in blocks.
-// Must be 32-bytes or panic.
-//
-//                          |-------must be this long------|
-pub const GRAFFITI: &str = "sigp/lighthouse-0.0.0-prerelease";
-
 #[derive(Debug, PartialEq)]
 pub enum BlockProcessingOutcome {
     /// Block was valid and imported into the block graph.
@@ -490,9 +484,6 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         let beacon_state = self.parent_beacon.current_state();
         let beacon_block_root_epoch = state.latest_block_header.slot.epoch(spec.slots_per_epoch, spec.shard_slots_per_beacon_slot);
         let beacon_block_root = beacon_state.get_block_root_at_epoch(beacon_block_root_epoch)?.clone();
-
-        let mut graffiti: [u8; 32] = [0; 32];
-        graffiti.copy_from_slice(GRAFFITI.as_bytes());
 
         let mut block = ShardBlock {
             shard: state.shard,
