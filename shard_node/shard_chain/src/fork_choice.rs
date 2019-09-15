@@ -117,19 +117,19 @@ impl<T: ShardChainTypes>ForkChoice<T> {
         Ok(())
     }
 
-    // /// Inform the fork choice that the given block (and corresponding root) have been finalized so
-    // /// it may prune it's storage.
-    // ///
-    // /// `finalized_block_root` must be the root of `finalized_block`.
-    // pub fn process_finalization(
-    //     &self,
-    //     finalized_block: &BeaconBlock,
-    //     finalized_block_root: Hash256,
-    // ) -> Result<()> {
-    //     self.backend
-    //         .update_finalized_root(finalized_block, finalized_block_root)
-    //         .map_err(Into::into)
-    // }
+    /// Inform the fork choice that the given block (and corresponding root) have been finalized so
+    /// it may prune it's storage.
+    ///
+    /// `finalized_block_root` must be the root of `finalized_block`.
+    pub fn process_finalization(
+        &self,
+        finalized_block: &ShardBlock,
+        finalized_block_root: Hash256,
+    ) -> Result<()> {
+        self.backend
+            .update_finalized_root(finalized_block, finalized_block_root)
+            .map_err(Into::into)
+    }
 }
 
 
