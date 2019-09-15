@@ -64,6 +64,7 @@ pub struct ShardChain<T: ShardChainTypes, L: BeaconChainTypes> {
     canonical_head: RwLock<CheckPoint<T::ShardSpec>>,
     state: RwLock<ShardState<T::ShardSpec>>,
     genesis_block_root: Hash256,
+    pub crosslink_root: Hash256,
     pub fork_choice: ForkChoice<T>,
 }
 
@@ -105,6 +106,7 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
             state: RwLock::new(genesis_state),
             canonical_head,
             genesis_block_root,
+            crosslink_root: Hash256::default(),
             fork_choice: ForkChoice::new(store.clone(), &genesis_block, genesis_block_root),
             store,
         })
@@ -287,6 +289,17 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         self.state.read().slot
     }
 
+    pub fn check_for_new_crosslink(mut self) -> Result<(), Error> {
+        let beacon_state = self.parent_beacon.current_state();
+        let crosslink_root = beacon_state.get_current_crosslink(self.shard)?.crosslink_data_root;
+        let current_crossslink_root = self.crosslink_root;
+        if crosslink_root != current_crossslink_root {
+            self.crosslink_root = crosslink_root;
+            self.after_crosslink(crosslink_root);
+        }
+        Ok(())
+    }
+
     /// Returns the block proposer for a given slot.
     ///
     /// Information is read from the present `beacon_state`
@@ -434,7 +447,7 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         //
         // Note: in the future we may choose to run fork-choice less often, potentially based upon
         // some heuristic around number of attestations seen for the block.
-        // self.fork_choice()?;
+        self.fork_choice()?;
         Ok(BlockProcessingOutcome::Processed { block_root })
     }
 
@@ -563,34 +576,20 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         Ok(())
     }
 
-    // /// Called after `self` has had a new block finalized.
-    // ///
-    // /// Performs pruning and finality-based optimizations.
-    // fn after_finalization(
-    //     &self,
-    //     old_finalized_epoch: Epoch,
-    //     finalized_block_root: Hash256,
-    // ) -> Result<(), Error> {
-    //     // Need to build logic here to manage pruning for shard as well
-    //     // let finalized_block = self
-    //     //     .store
-    //     //     .get::<BeaconBlock>(&finalized_block_root)?
-    //     //     .ok_or_else(|| Error::MissingBeaconBlock(finalized_block_root))?;
+    /// Called after `self` has found a new crosslink
+    ///
+    /// Performs pruning and fork choice optimizations after recognized crosslinks.
+    fn after_crosslink(&self, crosslink_root: Hash256) -> Result<(), Error> {
+        let crosslink_block = self
+            .store
+            .get::<ShardBlock>(&crosslink_root)?
+            .ok_or_else(|| Error::MissingShardBlock(crosslink_root))?;
 
-    //     // let new_finalized_epoch = finalized_block.slot.epoch(T::EthSpec::slots_per_epoch());
+        self.fork_choice
+            .process_finalization(&crosslink_block, crosslink_root)?;
 
-    //     // if new_finalized_epoch < old_finalized_epoch {
-    //     //     Err(Error::RevertedFinalizedEpoch {
-    //     //         previous_epoch: old_finalized_epoch,
-    //     //         new_epoch: new_finalized_epoch,
-    //     //     })
-    //     // } else {
-    //     //     self.fork_choice
-    //     //         .process_finalization(&finalized_block, finalized_block_root)?;
-
-    //     //     Ok(())
-    //     // }
-    // }
+        Ok(())
+    }
 
     // /// Returns `true` if the given block root has not been processed.
     // pub fn is_new_block_root(&self, shard_block_root: &Hash256) -> Result<bool, Error> {

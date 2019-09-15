@@ -49,6 +49,13 @@ impl<T: ShardChainTypes>ForkChoice<T> {
         // should be updated to end epoch :) with the new spec todo
         let start_block_slot = ShardSlot::from(current_crosslink.epoch.as_u64() * chain.spec.shard_slots_per_epoch);
 
+        // Resolve the `0x00.. 00` alias back to genesis
+        let start_block_root = if start_block_root == Hash256::zero() {
+            self.genesis_block_root
+        } else {
+            start_block_root
+        };
+
         // A function that returns the weight for some validator index.
         let weight = |validator_index: usize| -> Option<u64> {
             beacon_state
