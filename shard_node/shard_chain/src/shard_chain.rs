@@ -438,7 +438,7 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         
 
         // Register the new block with the fork choice service.
-        // self.fork_choice.process_block(&state, &block, block_root)?;
+        self.fork_choice.process_block(&beacon_state, &block, block_root)?;
 
         // Execute the fork choice algorithm, enthroning a new head if discovered.
         //
