@@ -64,7 +64,7 @@ pub struct ShardChain<T: ShardChainTypes, L: BeaconChainTypes> {
     canonical_head: RwLock<CheckPoint<T::ShardSpec>>,
     state: RwLock<ShardState<T::ShardSpec>>,
     genesis_block_root: Hash256,
-    pub crosslink_root: Hash256,
+    pub crosslink_root: RwLock<Hash256>,
     pub fork_choice: ForkChoice<T>,
 }
 
@@ -106,7 +106,7 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
             state: RwLock::new(genesis_state),
             canonical_head,
             genesis_block_root,
-            crosslink_root: Hash256::default(),
+            crosslink_root: RwLock::new(Hash256::default()),
             fork_choice: ForkChoice::new(store.clone(), &genesis_block, genesis_block_root),
             store,
         })
@@ -289,12 +289,12 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         self.state.read().slot
     }
 
-    pub fn check_for_new_crosslink(mut self) -> Result<(), Error> {
+    pub fn check_for_new_crosslink(&self) -> Result<(), Error> {
         let beacon_state = self.parent_beacon.current_state();
         let crosslink_root = beacon_state.get_current_crosslink(self.shard)?.crosslink_data_root;
-        let current_crossslink_root = self.crosslink_root;
+        let current_crossslink_root = *self.crosslink_root.read();
         if crosslink_root != current_crossslink_root {
-            self.crosslink_root = crosslink_root;
+            *self.crosslink_root.write() = crosslink_root;
             self.after_crosslink(crosslink_root);
         }
         Ok(())
@@ -316,32 +316,33 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         Ok(index)
     }
 
-    // /// Produce an `AttestationData` that is valid for the present `slot` and given `shard`.
-    // ///
-    // /// Attests to the canonical chain.
-    // pub fn produce_attestation_data(&self) -> Result<ShardAttestationData, Error> {
-    //     let state = self.state.read();
-    //     let head_block_root = self.head().shard_block_root;
-    //     let head_block_slot = self.head().shard_block.slot;
+    /// Produce an `AttestationData` that is valid for the present `slot` and given `shard`.
+    ///
+    /// Attests to the canonical chain.
+    pub fn produce_attestation_data(&self) -> Result<ShardAttestationData, Error> {
+        let state = self.state.read();
+        let head_block_root = self.head().shard_block_root;
+        let head_block_slot = self.head().shard_block.slot;
 
-    //     self.produce_attestation_data_for_block(head_block_root, head_block_slot, &*state)
-    // }
+        self.produce_attestation_data_for_block(head_block_root, head_block_slot, &*state)
+    }
 
-    // /// Produce an `AttestationData` that attests to the chain denoted by `block_root` and `state`.
-    // ///
-    // /// Permits attesting to any arbitrary chain. Generally, the `produce_attestation_data`
-    // /// function should be used as it attests to the canonical chain.
-    // pub fn produce_attestation_data_for_block(
-    //     &self,
-    //     head_block_root: Hash256,
-    //     head_block_slot: Slot,
-    //     state: &ShardState<T::EthSpec>,
-    // ) -> Result<ShardAttestationData, Error> {
+    /// Produce an `AttestationData` that attests to the chain denoted by `block_root` and `state`.
+    ///
+    /// Permits attesting to any arbitrary chain. Generally, the `produce_attestation_data`
+    /// function should be used as it attests to the canonical chain.
+    pub fn produce_attestation_data_for_block(
+        &self,
+        head_block_root: Hash256,
+        head_block_slot: ShardSlot,
+        state: &ShardState<T::ShardSpec>,
+    ) -> Result<ShardAttestationData, Error> {
 
-    //     Ok(AttestationData {
-    //         shard_block_root: head_block_root,
-    //     })
-    // }
+        Ok(ShardAttestationData {
+            shard_block_root: head_block_root,
+            target_slot: head_block_slot,
+        })
+    }
 
     /// Accept a new attestation from the network.
     ///
@@ -591,11 +592,6 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
 
         Ok(())
     }
-
-    // /// Returns `true` if the given block root has not been processed.
-    // pub fn is_new_block_root(&self, shard_block_root: &Hash256) -> Result<bool, Error> {
-    //     Ok(!self.store.exists::<ShardBlock>(shard_block_root)?)
-    // }
 }
 
 impl From<DBError> for Error {
