@@ -1,9 +1,11 @@
-use crate::{ShardChain, ShardChainTypes};
+use crate::{ShardChain, ShardChainTypes, ShardChainError};
+use beacon_chain::BeaconChainTypes;
 use shard_lmd_ghost::LmdGhost;
 use state_processing::common::get_attesting_indices_unsorted;
 use std::sync::Arc;
+use store::{Error as BeaconStoreError, Store as BeaconStore};
 use shard_store::{Error as StoreError, Store};
-use types::{Attestation, ShardBlock, ShardState, ShardStateError, Epoch, ShardSpec, Hash256};
+use types::{Attestation, BeaconBlock, BeaconState, BeaconStateError, ShardBlock, ShardSlot, ShardState, ShardStateError, Epoch, EthSpec, ShardSpec, Hash256};
 
 type Result<T> = std::result::Result<T, Error>;
 
@@ -11,9 +13,13 @@ type Result<T> = std::result::Result<T, Error>;
 pub enum Error {
     MissingBlock(Hash256),
     MissingState(Hash256),
+    MissingBeaconState(Hash256),
+    MissingBeaconBlock(Hash256),
     BackendError(String),
     ShardStateError(ShardStateError),
+    BeaconStateError(BeaconStateError),
     StoreError(StoreError),
+    BeaconStoreError(BeaconStoreError),
 }
 
 pub struct ForkChoice<T: ShardChainTypes> {
@@ -32,25 +38,42 @@ impl<T: ShardChainTypes> ForkChoice<T> {
             genesis_block_root,
         }
     }
-    // general pseudocode here
-    // pub fn find_head(&self, chain: &ShardChain<T>) -> Result<Hash256> {
-    //     let beacon_state = chain.get_beacon_state();
-    //     let finalized_epoch = beacon_state.finalized_epoch;
-    //     let start_block_root = chain.get_crosslink(finalized_epoch);
-    //     let start_block_slot = chain.get_block(start_block_root).slot;
 
-    //     // A function that returns the weight for some validator index.
-    //     let weight = |validator_index: usize| -> Option<u64> {
-    //         beacon_state
-    //             .validator_registry
-    //             .get(validator_index)
-    //             .map(|v| v.effective_balance)
-    //     };
+    pub fn find_head<L: BeaconChainTypes>(&self, chain: &ShardChain<T, L>) -> Result<Hash256> {
+        let current_state = chain.current_state();
+        let beacon_root = current_state.latest_block_header.beacon_block_root;
+        let beacon_block: BeaconBlock = chain
+            .parent_beacon
+            .store
+            .get(&beacon_root)?
+            .ok_or_else(|| Error::MissingBeaconBlock(beacon_root))?;
 
-    //     self.backend
-    //         .find_head(start_block_slot, start_block_root, weight)
-    //         .map_err(Into::into)
-    // }
+        let beacon_state: BeaconState<L::EthSpec> = chain
+            .parent_beacon
+            .store
+            .get(&beacon_block.state_root)?
+            .ok_or_else(|| Error::MissingBeaconState(beacon_block.state_root))?;
+
+        let current_crosslink = beacon_state.get_current_crosslink(chain.shard)?;
+        // Spec needs an update for crosslinks to hold the end shard_block_root
+        // For now, we will just assume the latest block hash is included and add the
+        // extra field to the beacon chain
+        let start_block_root = current_crosslink.crosslink_data_root;
+        // should be updated to end epoch :) with the new spec todo
+        let start_block_slot = ShardSlot::from(current_crosslink.epoch.as_u64() * chain.spec.shard_slots_per_epoch);
+
+        // A function that returns the weight for some validator index.
+        let weight = |validator_index: usize| -> Option<u64> {
+            beacon_state
+                .validator_registry
+                .get(validator_index)
+                .map(|v| v.effective_balance)
+        };
+
+        self.backend
+            .find_head(start_block_slot, start_block_root, weight)
+            .map_err(Into::into)
+    }
 
     // /// Process all attestations in the given `block`.
     // ///
@@ -125,9 +148,21 @@ impl From<ShardStateError> for Error {
     }
 }
 
+impl From<BeaconStateError> for Error {
+    fn from(e: BeaconStateError) -> Error {
+        Error::BeaconStateError(e)
+    }
+}
+
 impl From<StoreError> for Error {
     fn from(e: StoreError) -> Error {
         Error::StoreError(e)
+    }
+}
+
+impl From<BeaconStoreError> for Error {
+    fn from(e: BeaconStoreError) -> Error {
+        Error::BeaconStoreError(e)
     }
 }
 

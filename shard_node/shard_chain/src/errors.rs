@@ -1,8 +1,9 @@
-// use crate::fork_choice::Error as ForkChoiceError;
+use crate::fork_choice::Error as ForkChoiceError;
 // use crate::metrics::Error as MetricsError;
 use state_processing::BlockProcessingError;
 use state_processing::ShardSlotProcessingError;
 use state_processing::ShardBlockProcessingError;
+use store::{Error as BeaconDBError};
 use types::*;
 
 macro_rules! easy_from_to {
@@ -24,7 +25,8 @@ pub enum ShardChainError {
     ShardStateError(ShardStateError),
     DBInconsistent(String),
     DBError(shard_store::Error),
-    // ForkChoiceError(ForkChoiceError),
+    BeaconDBError(BeaconDBError),
+    ForkChoiceError(ForkChoiceError),
     MissingShardBlock(Hash256),
     MissingShardState(Hash256),
     ShardSlotProcessingError(ShardSlotProcessingError),
@@ -58,4 +60,3 @@ easy_from_to!(BeaconStateError, BlockProductionError);
 easy_from_to!(BeaconStateError, ShardChainError);
 easy_from_to!(ShardSlotProcessingError, BlockProductionError);
 easy_from_to!(ShardBlockProcessingError, BlockProductionError);
-

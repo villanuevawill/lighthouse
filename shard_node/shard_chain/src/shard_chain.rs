@@ -11,6 +11,7 @@ use state_processing::{
     per_shard_slot_processing, ShardBlockProcessingError,
 };
 use std::sync::Arc;
+use store::{Store as BeaconStore, Error as BeaconDBError};
 use shard_store::iter::{BestBlockRootsIterator, BlockIterator, BlockRootsIterator, StateRootsIterator};
 use shard_store::{Error as DBError, Store};
 use tree_hash::TreeHash;
@@ -222,6 +223,13 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         self.state.write().build_cache(&self.spec)?;
 
         Ok(())
+    }
+
+    pub fn get_beacon_state<U: EthSpec>(&self, state_root: Hash256) -> Result<Option<BeaconState<U>>, Error> {
+        match self.parent_beacon.store.get(&state_root) {
+            Ok(shard_block) => Ok(shard_block),
+            Err(e) => Err(Error::BeaconDBError(e)),
+        }
     }
 
     /// Returns the validator index (if any) for the given public key.
@@ -575,15 +583,14 @@ impl From<DBError> for Error {
     }
 }
 
-// impl From<ForkChoiceError> for Error {
-//     fn from(e: ForkChoiceError) -> Error {
-//         Error::ForkChoiceError(e)
-//     }
-// }
+impl From<ForkChoiceError> for Error {
+    fn from(e: ForkChoiceError) -> Error {
+        Error::ForkChoiceError(e)
+    }
+}
 
 impl From<ShardStateError> for Error {
     fn from(e: ShardStateError) -> Error {
         Error::ShardStateError(e)
     }
 }
-
