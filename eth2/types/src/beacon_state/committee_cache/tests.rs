@@ -156,6 +156,7 @@ pub struct ExcessShardsEthSpec;
 
 impl EthSpec for ExcessShardsEthSpec {
     type ShardCount = U128;
+    type PeriodCommitteeRootsLength = U8192;
     type SlotsPerEpoch = U8;
     type MaxPendingAttestations = U1024;
 
