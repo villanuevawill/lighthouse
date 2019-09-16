@@ -1,19 +1,20 @@
 use crate::checkpoint::CheckPoint;
-use crate::errors::{ShardChainError as Error, BlockProductionError};
-use beacon_chain::{BeaconChain, BeaconChainTypes};
+use crate::errors::{BlockProductionError, ShardChainError as Error};
 use crate::fork_choice::{Error as ForkChoiceError, ForkChoice};
-use shard_lmd_ghost::LmdGhost;
-use shard_operation_pool::{OperationPool};
+use beacon_chain::{BeaconChain, BeaconChainTypes};
 use parking_lot::{RwLock, RwLockReadGuard};
+use shard_lmd_ghost::LmdGhost;
+use shard_operation_pool::OperationPool;
+use shard_store::iter::{
+    BestBlockRootsIterator, BlockIterator, BlockRootsIterator, StateRootsIterator,
+};
+use shard_store::{Error as DBError, Store};
 use slot_clock::SlotClock;
 use state_processing::{
-    per_shard_block_processing,
-    per_shard_slot_processing, ShardBlockProcessingError,
+    per_shard_block_processing, per_shard_slot_processing, ShardBlockProcessingError,
 };
 use std::sync::Arc;
-use store::{Store as BeaconStore, Error as BeaconDBError};
-use shard_store::iter::{BestBlockRootsIterator, BlockIterator, BlockRootsIterator, StateRootsIterator};
-use shard_store::{Error as DBError, Store};
+use store::{Error as BeaconDBError, Store as BeaconStore};
 use tree_hash::TreeHash;
 use types::*;
 
@@ -134,7 +135,10 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
     /// Returns `None` for roots prior to genesis or when there is an error reading from `Store`.
     ///
     /// Contains duplicate roots when skip slots are encountered.
-    pub fn rev_iter_block_roots(&self, slot: ShardSlot) -> BlockRootsIterator<T::ShardSpec, T::Store> {
+    pub fn rev_iter_block_roots(
+        &self,
+        slot: ShardSlot,
+    ) -> BlockRootsIterator<T::ShardSpec, T::Store> {
         BlockRootsIterator::owned(self.store.clone(), self.state.read().clone(), slot)
     }
 
@@ -155,7 +159,10 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
     /// genesis.
     ///
     /// Returns `None` for roots prior to genesis or when there is an error reading from `Store`.
-    pub fn rev_iter_state_roots(&self, slot: ShardSlot) -> StateRootsIterator<T::ShardSpec, T::Store> {
+    pub fn rev_iter_state_roots(
+        &self,
+        slot: ShardSlot,
+    ) -> StateRootsIterator<T::ShardSpec, T::Store> {
         StateRootsIterator::owned(self.store.clone(), self.state.read().clone(), slot)
     }
 
@@ -251,9 +258,11 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
     /// `self.state` should undergo per slot processing.
     pub fn read_slot_clock(&self) -> Option<ShardSlot> {
         let spec = &self.spec;
-        
+
         match self.slot_clock.present_slot() {
-            Ok(Some(some_slot)) => Some(some_slot.shard_slot(spec.slots_per_epoch, spec.shard_slots_per_epoch)),
+            Ok(Some(some_slot)) => {
+                Some(some_slot.shard_slot(spec.slots_per_epoch, spec.shard_slots_per_epoch))
+            }
             Ok(None) => None,
             _ => None,
         }
@@ -265,7 +274,6 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         let now = self.read_slot_clock()?;
         let spec = &self.spec;
         let genesis_slot = spec.phase_1_fork_epoch * spec.shard_slots_per_epoch;
-
 
         if now < genesis_slot {
             None
@@ -285,7 +293,9 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
 
     pub fn check_for_new_crosslink(&self) -> Result<(), Error> {
         let beacon_state = self.parent_beacon.current_state();
-        let crosslink_root = beacon_state.get_current_crosslink(self.shard)?.crosslink_data_root;
+        let crosslink_root = beacon_state
+            .get_current_crosslink(self.shard)?
+            .crosslink_data_root;
         let current_crossslink_root = *self.crosslink_root.read();
         if crosslink_root != current_crossslink_root {
             *self.crosslink_root.write() = crosslink_root;
@@ -298,16 +308,19 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
     ///
     /// Information is read from the present `beacon_state`
     pub fn block_proposer(&self, slot: ShardSlot, shard: u64) -> Result<usize, Error> {
-        let index = self.parent_beacon.current_state().get_shard_proposer_index(
-            shard,
-            slot,
-        )?;
+        let index = self
+            .parent_beacon
+            .current_state()
+            .get_shard_proposer_index(shard, slot)?;
 
         Ok(index)
     }
 
     pub fn shard_committee(&self, epoch: Epoch, shard: u64) -> Result<ShardCommittee, Error> {
-        let shard_committee = self.parent_beacon.current_state().get_shard_committee(epoch, shard)?;
+        let shard_committee = self
+            .parent_beacon
+            .current_state()
+            .get_shard_committee(epoch, shard)?;
         Ok(shard_committee)
     }
 
@@ -332,7 +345,6 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         head_block_slot: ShardSlot,
         state: &ShardState<T::ShardSpec>,
     ) -> Result<ShardAttestationData, Error> {
-
         Ok(ShardAttestationData {
             shard_block_root: head_block_root,
             target_slot: head_block_slot,
@@ -343,12 +355,12 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
     ///
     /// If valid, the attestation is added to the `op_pool` and aggregated with another attestation
     /// if possible.
-    pub fn process_attestation(
-        &self,
-        attestation: ShardAttestation,
-    ) -> () {
-        self.op_pool
-            .insert_attestation(attestation, &self.parent_beacon.current_state(), &self.spec);
+    pub fn process_attestation(&self, attestation: ShardAttestation) -> () {
+        self.op_pool.insert_attestation(
+            attestation,
+            &self.parent_beacon.current_state(),
+            &self.spec,
+        );
     }
 
     /// Accept some block and attempt to add it to block DAG.
@@ -357,7 +369,7 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
     pub fn process_block(&self, block: ShardBlock) -> Result<BlockProcessingOutcome, Error> {
         let spec = &self.spec;
         let beacon_state = &self.parent_beacon.current_state();
-        
+
         let finalized_slot = beacon_state
             .finalized_epoch
             .start_slot(spec.slots_per_epoch)
@@ -434,10 +446,10 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         // Store the block and state.
         self.store.put(&block_root, &block)?;
         self.store.put(&state_root, &state)?;
-        
 
         // Register the new block with the fork choice service.
-        self.fork_choice.process_block(&beacon_state, &block, block_root)?;
+        self.fork_choice
+            .process_block(&beacon_state, &block, block_root)?;
 
         // Execute the fork choice algorithm, enthroning a new head if discovered.
         //
@@ -483,8 +495,13 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         let spec = &self.spec;
         let parent_root = state.latest_block_header.canonical_root();
         let beacon_state = self.parent_beacon.current_state();
-        let beacon_block_root_epoch = state.latest_block_header.slot.epoch(spec.slots_per_epoch, spec.shard_slots_per_beacon_slot);
-        let beacon_block_root = beacon_state.get_block_root_at_epoch(beacon_block_root_epoch)?.clone();
+        let beacon_block_root_epoch = state
+            .latest_block_header
+            .slot
+            .epoch(spec.slots_per_epoch, spec.shard_slots_per_beacon_slot);
+        let beacon_block_root = beacon_state
+            .get_block_root_at_epoch(beacon_block_root_epoch)?
+            .clone();
 
         let mut block = ShardBlock {
             shard: state.shard,
@@ -492,7 +509,11 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
             beacon_block_root,
             parent_root,
             state_root: Hash256::zero(),
-            attestation: self.op_pool.get_attestation(&state, &self.parent_beacon.current_state(), spec),
+            attestation: self.op_pool.get_attestation(
+                &state,
+                &self.parent_beacon.current_state(),
+                spec,
+            ),
             signature: Signature::empty_signature(),
         };
 

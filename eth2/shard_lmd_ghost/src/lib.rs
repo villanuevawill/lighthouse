@@ -1,8 +1,8 @@
 mod reduced_tree;
 
-use std::sync::Arc;
 use shard_store::Store;
-use types::{ShardBlock, ShardSpec, Hash256, ShardSlot};
+use std::sync::Arc;
+use types::{Hash256, ShardBlock, ShardSlot, ShardSpec};
 
 pub use reduced_tree::ThreadSafeReducedTree;
 

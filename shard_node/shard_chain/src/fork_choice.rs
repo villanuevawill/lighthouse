@@ -1,11 +1,14 @@
-use crate::{ShardChain, ShardChainTypes, ShardChainError};
+use crate::{ShardChain, ShardChainError, ShardChainTypes};
 use beacon_chain::BeaconChainTypes;
 use shard_lmd_ghost::LmdGhost;
+use shard_store::{Error as StoreError, Store};
 use state_processing::common::get_shard_attesting_indices_unsorted;
 use std::sync::Arc;
 use store::{Error as BeaconStoreError, Store as BeaconStore};
-use shard_store::{Error as StoreError, Store};
-use types::{ShardAttestation, BeaconBlock, BeaconState, BeaconStateError, ShardBlock, ShardSlot, ShardState, ShardStateError, Epoch, EthSpec, ShardSpec, Hash256};
+use types::{
+    BeaconBlock, BeaconState, BeaconStateError, Epoch, EthSpec, Hash256, ShardAttestation,
+    ShardBlock, ShardSlot, ShardSpec, ShardState, ShardStateError,
+};
 
 type Result<T> = std::result::Result<T, Error>;
 
@@ -27,7 +30,7 @@ pub struct ForkChoice<T: ShardChainTypes> {
     genesis_block_root: Hash256,
 }
 
-impl<T: ShardChainTypes>ForkChoice<T> {
+impl<T: ShardChainTypes> ForkChoice<T> {
     pub fn new(
         store: Arc<T::Store>,
         genesis_block: &ShardBlock,
@@ -47,7 +50,8 @@ impl<T: ShardChainTypes>ForkChoice<T> {
         // extra field to the beacon chain
         let start_block_root = current_crosslink.crosslink_data_root;
         // should be updated to end epoch :) with the new spec todo
-        let start_block_slot = ShardSlot::from(current_crosslink.epoch.as_u64() * chain.spec.shard_slots_per_epoch);
+        let start_block_slot =
+            ShardSlot::from(current_crosslink.epoch.as_u64() * chain.spec.shard_slots_per_epoch);
 
         // Resolve the `0x00.. 00` alias back to genesis
         let start_block_root = if start_block_root == Hash256::zero() {
@@ -89,7 +93,7 @@ impl<T: ShardChainTypes>ForkChoice<T> {
         &self,
         beacon_state: &BeaconState<P>,
         attestation: &ShardAttestation,
-        block: &ShardBlock
+        block: &ShardBlock,
     ) -> Result<()> {
         // Note: `get_attesting_indices_unsorted` requires that the beacon state caches be built.
         let validator_indices = get_shard_attesting_indices_unsorted(
@@ -125,7 +129,6 @@ impl<T: ShardChainTypes>ForkChoice<T> {
             .map_err(Into::into)
     }
 }
-
 
 impl From<ShardStateError> for Error {
     fn from(e: ShardStateError) -> Error {

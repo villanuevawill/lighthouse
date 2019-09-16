@@ -1,5 +1,5 @@
 use crate::*;
-use fixed_len_vec::typenum::{U64};
+use fixed_len_vec::typenum::U64;
 use serde_derive::{Deserialize, Serialize};
 use std::fmt::Debug;
 

@@ -21,8 +21,8 @@ pub use beacon_state_types::*;
 
 mod beacon_state_types;
 mod committee_cache;
-mod period_committee_cache;
 mod exit_cache;
+mod period_committee_cache;
 mod pubkey_cache;
 mod tests;
 
@@ -200,7 +200,8 @@ impl<T: EthSpec> BeaconState<T> {
             // Update to proper variables
             period_committee_roots: FixedLenVec::from(vec![
                 spec.zero_hash;
-                T::PeriodCommitteeRootsLength::to_usize()
+                T::PeriodCommitteeRootsLength::to_usize(
+                )
             ]),
 
             // Finality
@@ -416,10 +417,7 @@ impl<T: EthSpec> BeaconState<T> {
         Ok(committee)
     }
 
-    pub fn period_index(
-        &self,
-        relative_period: RelativePeriod,
-    ) -> usize {
+    pub fn period_index(&self, relative_period: RelativePeriod) -> usize {
         match relative_period {
             RelativePeriod::Previous => 0,
             RelativePeriod::Current => 1,
@@ -435,11 +433,7 @@ impl<T: EthSpec> BeaconState<T> {
         self.period_caches[self.period_index(relative_period)].get_period_committee(shard)
     }
 
-    pub fn get_shard_committee(
-        &self,
-        epoch: Epoch,
-        shard: u64,
-    ) -> Result<ShardCommittee, Error> {
+    pub fn get_shard_committee(&self, epoch: Epoch, shard: u64) -> Result<ShardCommittee, Error> {
         let spec = T::default_spec();
         let current_epoch = self.current_epoch();
         let current_period = current_epoch.period(spec.epochs_per_shard_period);
@@ -449,37 +443,41 @@ impl<T: EthSpec> BeaconState<T> {
             return Err(BeaconStateError::PeriodOutOfBounds);
         }
 
-        let earlier_committee = &self.get_period_committee(RelativePeriod::Previous, shard)?.committee;
-        let later_committee = &self.get_period_committee(RelativePeriod::Current, shard)?.committee;
+        let earlier_committee = &self
+            .get_period_committee(RelativePeriod::Previous, shard)?
+            .committee;
+        let later_committee = &self
+            .get_period_committee(RelativePeriod::Current, shard)?
+            .committee;
 
         let mut union = Vec::new();
 
         for &member in earlier_committee {
-            if member as u64 % spec.epochs_per_shard_period < member as u64 % spec.epochs_per_shard_period {
+            if member as u64 % spec.epochs_per_shard_period
+                < member as u64 % spec.epochs_per_shard_period
+            {
                 union.push(member);
             }
         }
 
         for &member in later_committee {
-            if member as u64 % spec.epochs_per_shard_period >= member as u64 % spec.epochs_per_shard_period {
+            if member as u64 % spec.epochs_per_shard_period
+                >= member as u64 % spec.epochs_per_shard_period
+            {
                 union.push(member);
             }
         }
 
         union.dedup();
 
-        Ok(ShardCommittee{
+        Ok(ShardCommittee {
             epoch: epoch,
             shard: shard,
             committee: union,
         })
     }
 
-    pub fn get_shard_proposer_index(
-        &self,
-        shard: u64,
-        slot: ShardSlot,
-    ) -> Result<usize, Error> {
+    pub fn get_shard_proposer_index(&self, shard: u64, slot: ShardSlot) -> Result<usize, Error> {
         let spec = T::default_spec();
         let current_epoch = self.current_epoch();
         let target_epoch = slot.epoch(spec.shard_slots_per_epoch, spec.shard_slots_per_beacon_slot);

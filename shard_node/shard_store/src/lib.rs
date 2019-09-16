@@ -8,14 +8,14 @@
 //! Provides a simple API for storing/retrieving all types that sometimes needs type-hints. See
 //! tests for implementation examples.
 
-pub mod iter;
-mod impls;
 mod block_at_slot;
 mod errors;
+mod impls;
+pub mod iter;
 mod memory_store;
 
-pub use memory_store::MemoryStore;
 pub use errors::Error;
+pub use memory_store::MemoryStore;
 pub use types::*;
 
 /// An object capable of storing and retrieving objects implementing `StoreItem`.
