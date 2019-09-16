@@ -1,4 +1,4 @@
-use super::{AggregateSignature, ShardAttestationData, Bitfield};
+use super::{AggregateSignature, Bitfield, ShardAttestationData};
 use crate::test_utils::TestRandom;
 
 use serde_derive::{Deserialize, Serialize};

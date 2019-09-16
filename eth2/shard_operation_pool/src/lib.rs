@@ -6,7 +6,7 @@ use parking_lot::RwLock;
 use std::collections::{btree_map::Entry, hash_map, BTreeMap, HashMap, HashSet};
 use std::marker::PhantomData;
 use types::{
-    BeaconState, ShardAttestation, ShardSlot, ShardState, ChainSpec, EthSpec, ShardSpec, Validator
+    BeaconState, ChainSpec, EthSpec, ShardAttestation, ShardSlot, ShardSpec, ShardState, Validator,
 };
 
 #[derive(Default, Debug)]
@@ -64,10 +64,16 @@ impl<T: ShardSpec> OperationPool<T> {
     }
 
     /// Get attestation with most attesters for inclusion in a block
-    pub fn get_attestation<U: EthSpec>(&self, state: &ShardState<T>, beacon_state: &BeaconState<U>, spec: &ChainSpec) -> ShardAttestation {
+    pub fn get_attestation<U: EthSpec>(
+        &self,
+        state: &ShardState<T>,
+        beacon_state: &BeaconState<U>,
+        spec: &ChainSpec,
+    ) -> ShardAttestation {
         let attesting_slot = ShardSlot::from(state.slot - 1);
         let epoch = attesting_slot.epoch(spec.slots_per_epoch, spec.shard_slots_per_beacon_slot);
-        let domain_bytes = AttestationId::compute_domain_bytes(epoch, attesting_slot, beacon_state, spec);
+        let domain_bytes =
+            AttestationId::compute_domain_bytes(epoch, attesting_slot, beacon_state, spec);
         let reader = self.attestations.read();
 
         let mut attestations: Vec<ShardAttestation> = reader
@@ -77,19 +83,25 @@ impl<T: ShardSpec> OperationPool<T> {
             .cloned()
             .collect();
 
-        attestations.sort_by(|a, b| b.aggregation_bitfield.num_set_bits().cmp(&a.aggregation_bitfield.num_set_bits()));
+        attestations.sort_by(|a, b| {
+            b.aggregation_bitfield
+                .num_set_bits()
+                .cmp(&a.aggregation_bitfield.num_set_bits())
+        });
         (&attestations[0]).clone()
     }
 
     pub fn prune_attestations(&self, finalized_state: &ShardState<T>) {
         self.attestations.write().retain(|_, attestations| {
-            attestations.first().map_or(false, |att| {
-                finalized_state.slot <= att.data.target_slot
-            })
+            attestations
+                .first()
+                .map_or(false, |att| finalized_state.slot <= att.data.target_slot)
         });
     }
 }
 
 impl<T: ShardSpec + Default> PartialEq for OperationPool<T> {
-    fn eq(&self, other: &Self) -> bool { *self.attestations.read() == *other.attestations.read()}
+    fn eq(&self, other: &Self) -> bool {
+        *self.attestations.read() == *other.attestations.read()
+    }
 }

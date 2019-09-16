@@ -10,8 +10,8 @@
 //! implement `Into<u64>`, however this would allow operations between `Slots` and `Epochs` which
 //! may lead to programming errors which are not detected by the compiler.
 
-use crate::slot_height::{SlotHeight, ShardSlotHeight};
 use crate::period::Period;
+use crate::slot_height::{ShardSlotHeight, SlotHeight};
 use crate::test_utils::TestRandom;
 use rand::RngCore;
 use serde_derive::{Deserialize, Serialize};
@@ -30,7 +30,6 @@ pub struct Slot(u64);
 #[derive(Eq, Debug, Clone, Copy, Default, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct ShardSlot(u64);
-
 
 #[derive(Eq, Debug, Clone, Copy, Default, Serialize, Deserialize)]
 pub struct Epoch(u64);

@@ -32,18 +32,19 @@ pub fn get_attesting_indices<T: EthSpec>(
         .collect())
 }
 
-
 pub fn get_shard_attesting_indices<T: EthSpec>(
     shard: Shard,
     state: &BeaconState<T>,
     attestation_data: &ShardAttestationData,
     bitfield: &Bitfield,
 ) -> Result<Vec<usize>, BeaconStateError> {
-    get_shard_attesting_indices_unsorted(shard, state, attestation_data, bitfield).map(|mut indices| {
-        // Fast unstable sort is safe because validator indices are unique
-        indices.sort_unstable();
-        indices
-    })
+    get_shard_attesting_indices_unsorted(shard, state, attestation_data, bitfield).map(
+        |mut indices| {
+            // Fast unstable sort is safe because validator indices are unique
+            indices.sort_unstable();
+            indices
+        },
+    )
 }
 
 /// Returns validator indices which participated in the attestation, unsorted.
@@ -54,9 +55,10 @@ pub fn get_shard_attesting_indices_unsorted<T: EthSpec>(
     bitfield: &Bitfield,
 ) -> Result<Vec<usize>, BeaconStateError> {
     let spec = T::default_spec();
-    let target_epoch = attestation_data.target_slot.epoch(spec.slots_per_epoch, spec.shard_slots_per_beacon_slot);
-    let committee =
-        state.get_shard_committee(target_epoch, shard)?;
+    let target_epoch = attestation_data
+        .target_slot
+        .epoch(spec.slots_per_epoch, spec.shard_slots_per_beacon_slot);
+    let committee = state.get_shard_committee(target_epoch, shard)?;
 
     if !verify_bitfield_length(&bitfield, committee.committee.len()) {
         return Err(BeaconStateError::InvalidBitfield);

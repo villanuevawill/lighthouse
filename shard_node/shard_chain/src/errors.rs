@@ -1,9 +1,9 @@
 use crate::fork_choice::Error as ForkChoiceError;
 // use crate::metrics::Error as MetricsError;
 use state_processing::BlockProcessingError;
-use state_processing::ShardSlotProcessingError;
 use state_processing::ShardBlockProcessingError;
-use store::{Error as BeaconDBError};
+use state_processing::ShardSlotProcessingError;
+use store::Error as BeaconDBError;
 use types::*;
 
 macro_rules! easy_from_to {
