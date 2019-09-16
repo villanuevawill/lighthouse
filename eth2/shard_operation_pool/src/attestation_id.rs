@@ -1,7 +1,9 @@
 use int_to_bytes::int_to_bytes8;
 use ssz::ssz_encode;
 use ssz_derive::{Decode, Encode};
-use types::{BeaconState, ShardAttestationData, ShardSlot, ShardState, ChainSpec, Domain, Epoch, EthSpec};
+use types::{
+    BeaconState, ChainSpec, Domain, Epoch, EthSpec, ShardAttestationData, ShardSlot, ShardState,
+};
 
 /// Serialized `AttestationData` augmented with a domain to encode the fork info.
 #[derive(PartialEq, Eq, Clone, Hash, Debug, PartialOrd, Ord, Encode, Decode)]
@@ -21,7 +23,12 @@ impl AttestationId {
         let mut bytes = ssz_encode(attestation);
         let slot = attestation.target_slot;
         let epoch = slot.epoch(spec.slots_per_epoch, spec.shard_slots_per_beacon_slot);
-        bytes.extend_from_slice(&AttestationId::compute_domain_bytes(epoch, slot, beacon_state, spec));
+        bytes.extend_from_slice(&AttestationId::compute_domain_bytes(
+            epoch,
+            slot,
+            beacon_state,
+            spec,
+        ));
         AttestationId { v: bytes }
     }
 
@@ -31,9 +38,10 @@ impl AttestationId {
         beacon_state: &BeaconState<T>,
         spec: &ChainSpec,
     ) -> Vec<u8> {
-        let mut domain_bytes = int_to_bytes8(spec.get_domain(epoch, Domain::Attestation, &beacon_state.fork));
+        let mut domain_bytes =
+            int_to_bytes8(spec.get_domain(epoch, Domain::Attestation, &beacon_state.fork));
         let mut slot_identifying_bytes = int_to_bytes8(slot.into());
-        
+
         domain_bytes.append(&mut slot_identifying_bytes);
         domain_bytes
     }

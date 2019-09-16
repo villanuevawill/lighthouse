@@ -1,4 +1,4 @@
-use crate::slot_epoch::{Epoch, Slot, ShardSlot};
+use crate::slot_epoch::{Epoch, ShardSlot, Slot};
 use crate::test_utils::TestRandom;
 
 use rand::RngCore;
@@ -46,8 +46,13 @@ impl ShardSlotHeight {
         ShardSlot::from(self.0.saturating_add(genesis_slot.as_u64()))
     }
 
-    pub fn epoch(self, genesis_slot: u64, slots_per_epoch: u64, slots_per_beacon_slot: u64) -> Epoch {
-        Epoch::from(self.0.saturating_add(genesis_slot) / slots_per_epoch / slots_per_beacon_slot )
+    pub fn epoch(
+        self,
+        genesis_slot: u64,
+        slots_per_epoch: u64,
+        slots_per_beacon_slot: u64,
+    ) -> Epoch {
+        Epoch::from(self.0.saturating_add(genesis_slot) / slots_per_epoch / slots_per_beacon_slot)
     }
 
     pub fn max_value() -> ShardSlotHeight {

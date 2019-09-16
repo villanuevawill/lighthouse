@@ -1,14 +1,13 @@
-use serde_derive::{Deserialize, Serialize};
-use ssz::{ssz_encode, Decode, DecodeError, Encode};
-use std::fmt;
-use std::iter::Iterator;
-use slog;
-use std::cmp::{Ord, Ordering};
-use std::hash::{Hash, Hasher};
-use rand::RngCore;
 use crate::test_utils::TestRandom;
+use rand::RngCore;
+use serde_derive::{Deserialize, Serialize};
+use slog;
+use ssz::{ssz_encode, Decode, DecodeError, Encode};
+use std::cmp::{Ord, Ordering};
+use std::fmt;
+use std::hash::{Hash, Hasher};
+use std::iter::Iterator;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, Sub, SubAssign};
-
 
 #[derive(Eq, Debug, Clone, Copy, Default, Serialize, Deserialize)]
 #[serde(transparent)]

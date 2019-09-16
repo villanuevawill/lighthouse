@@ -5,11 +5,11 @@
 //! This implementation is incomplete and has known bugs. Do not use in production.
 use super::{LmdGhost, Result as SuperResult};
 use parking_lot::RwLock;
+use shard_store::{iter::BestBlockRootsIterator, Error as StoreError, Store};
 use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::sync::Arc;
-use shard_store::{iter::BestBlockRootsIterator, Error as StoreError, Store};
-use types::{ShardBlock, ShardState, ShardSpec, Hash256, ShardSlot};
+use types::{Hash256, ShardBlock, ShardSlot, ShardSpec, ShardState};
 
 type Result<T> = std::result::Result<T, Error>;
 

@@ -1,7 +1,7 @@
 use crate::Store;
 use std::borrow::Cow;
 use std::sync::Arc;
-use types::{ShardBlock, ShardState, ShardStateError, ShardSpec, Hash256, ShardSlot};
+use types::{Hash256, ShardBlock, ShardSlot, ShardSpec, ShardState, ShardStateError};
 
 #[derive(Clone)]
 pub struct StateRootsIterator<'a, T: ShardSpec, U> {
@@ -121,7 +121,10 @@ impl<'a, T: ShardSpec, U: Store> Iterator for BlockRootsIterator<'a, T, U> {
             self.shard_state = Cow::Owned(shard_state);
         }
 
-        Some((self.shard_state.latest_block_header.canonical_root(), self.slot))
+        Some((
+            self.shard_state.latest_block_header.canonical_root(),
+            self.slot,
+        ))
     }
 }
 
@@ -180,6 +183,9 @@ impl<'a, T: ShardSpec, U: Store> Iterator for BestBlockRootsIterator<'a, T, U> {
             self.shard_state = Cow::Owned(shard_state);
         }
 
-        Some((self.shard_state.latest_block_header.canonical_root(), self.slot))
+        Some((
+            self.shard_state.latest_block_header.canonical_root(),
+            self.slot,
+        ))
     }
 }

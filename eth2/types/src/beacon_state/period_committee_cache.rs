@@ -22,12 +22,12 @@ impl PeriodCommitteeCache {
         let mut committees: Vec<PeriodCommittee> = Vec::with_capacity(shard_count);
 
         for n in 0..shard_count {
-            let crosslink_committee = state
-                .get_crosslink_committee_for_shard(n as u64, RelativeEpoch::Current)?;
+            let crosslink_committee =
+                state.get_crosslink_committee_for_shard(n as u64, RelativeEpoch::Current)?;
             let crosslink_size = crosslink_committee.committee.len();
 
-            let committee_indices = crosslink_committee
-                .committee[..crosslink_size.min(spec.target_period_committee_size)]
+            let committee_indices = crosslink_committee.committee
+                [..crosslink_size.min(spec.target_period_committee_size)]
                 .to_vec();
             let period_committee = PeriodCommittee {
                 shard: n as u64,

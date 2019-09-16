@@ -1,6 +1,6 @@
 use serde_derive::Serialize;
 use ssz_derive::{Decode, Encode};
-use types::{ShardBlock, ShardState, ShardSpec, Hash256};
+use types::{Hash256, ShardBlock, ShardSpec, ShardState};
 
 #[derive(Clone, Serialize, PartialEq, Debug, Encode, Decode)]
 pub struct CheckPoint<E: ShardSpec> {
