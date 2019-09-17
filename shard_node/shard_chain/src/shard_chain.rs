@@ -68,21 +68,21 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         store: Arc<T::Store>,
         slot_clock: T::SlotClock,
         mut genesis_state: ShardState<T::ShardSpec>,
-        genesis_block: ShardBlock,
         spec: ChainSpec,
         shard: Shard,
         parent_beacon: Arc<BeaconChain<L>>,
     ) -> Result<Self, Error> {
         genesis_state.build_cache(&spec)?;
+        let genesis_block_header = &genesis_state.latest_block_header;
+        let genesis_block = genesis_block_header.block();
 
         let state_root = genesis_state.canonical_root();
         store.put(&state_root, &genesis_state)?;
 
-        let genesis_block_root = genesis_block.block_header().canonical_root();
+        let genesis_block_root = genesis_block_header.canonical_root();
         store.put(&genesis_block_root, &genesis_block)?;
 
         // Also store the genesis block under the `ZERO_HASH` key.
-        let genesis_block_root = genesis_block.block_header().canonical_root();
         store.put(&spec.zero_hash, &genesis_block)?;
 
         let canonical_head = RwLock::new(CheckPoint::new(

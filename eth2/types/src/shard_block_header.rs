@@ -62,6 +62,18 @@ impl ShardBlockHeader {
             signature: self.signature,
         }
     }
+
+    pub fn block(&self) -> ShardBlock {
+        ShardBlock {
+            shard: self.shard,
+            slot: self.slot,
+            beacon_block_root: self.beacon_block_root,
+            parent_root: self.parent_root,
+            state_root: self.state_root,
+            attestation: self.attestation.clone(),
+            signature: self.signature.clone(),
+        }
+    }
 }
 
 #[cfg(test)]
