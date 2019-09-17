@@ -152,6 +152,11 @@ where
         self.beacon_chain.catchup_state().expect("should catchup state");
     }
 
+    pub fn advance_shard_slot(&self) {
+        self.shard_chain.slot_clock.advance_slot();
+        self.shard_chain.catchup_state().expect("should catchup state");
+    }
+
     /// Extend the `BeaconChain` with some blocks and attestations. Returns the root of the
     /// last-produced block (the head of the chain).
     ///
@@ -209,6 +214,21 @@ where
             .expect("could not find state root");
 
         self.beacon_chain
+            .store
+            .get(&state_root)
+            .expect("should read db")
+            .expect("should find state root")
+    }
+
+    fn get_shard_state_at_slot(&self, state_slot: ShardSlot) -> ShardState<U> {
+        let state_root = self
+            .shard_chain
+            .rev_iter_state_roots(self.shard_chain.current_state().slot - 1)
+            .find(|(_hash, slot)| *slot == state_slot)
+            .map(|(hash, _slot)| hash)
+            .expect("could not find state root");
+
+        self.shard_chain
             .store
             .get(&state_root)
             .expect("should read db")
