@@ -307,20 +307,20 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
     /// Returns the block proposer for a given slot.
     ///
     /// Information is read from the present `beacon_state`
-    pub fn block_proposer(&self, slot: ShardSlot, shard: u64) -> Result<usize, Error> {
+    pub fn block_proposer(&self, slot: ShardSlot) -> Result<usize, Error> {
         let index = self
             .parent_beacon
             .current_state()
-            .get_shard_proposer_index(shard, slot)?;
+            .get_shard_proposer_index(self.shard, slot)?;
 
         Ok(index)
     }
 
-    pub fn shard_committee(&self, epoch: Epoch, shard: u64) -> Result<ShardCommittee, Error> {
+    pub fn shard_committee(&self, epoch: Epoch) -> Result<ShardCommittee, Error> {
         let shard_committee = self
             .parent_beacon
             .current_state()
-            .get_shard_committee(epoch, shard)?;
+            .get_shard_committee(epoch, self.shard)?;
         Ok(shard_committee)
     }
 
