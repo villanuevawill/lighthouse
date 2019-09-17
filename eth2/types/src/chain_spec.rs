@@ -75,15 +75,15 @@ pub struct ChainSpec {
     pub min_epochs_to_inactivity_penalty: u64,
 
     /*
-    * Additional Time Parameters
-    */
+     * Additional Time Parameters
+     */
     pub slots_per_epoch: u64,
     pub shard_slots_per_beacon_slot: u64,
     pub shard_slots_per_epoch: u64,
 
     /*
-    * Phase 1 specific values, fork epoch and slot are hardcoded to values for now
-    */
+     * Phase 1 specific values, fork epoch and slot are hardcoded to values for now
+     */
     pub epochs_per_shard_period: u64,
     pub period_committee_root_length: u64,
     pub phase_1_fork_epoch: u64,
@@ -209,8 +209,8 @@ impl ChainSpec {
             min_epochs_to_inactivity_penalty: 4,
 
             /*
-            * Additional Time Parameters
-            */
+             * Additional Time Parameters
+             */
             slots_per_epoch: 64,
             shard_slots_per_beacon_slot: 2,
             shard_slots_per_epoch: 128,
@@ -279,10 +279,13 @@ impl ChainSpec {
             min_attestation_inclusion_delay: 2,
             slots_per_eth1_voting_period: 16,
             genesis_slot,
+            epochs_per_shard_period: 8,
             chain_id: 2, // lighthouse testnet chain id
             boot_nodes,
             slots_per_epoch: 8,
             shard_slots_per_epoch: 16,
+            phase_1_fork_slot: 96,
+            phase_1_fork_epoch: 6,
             ..ChainSpec::mainnet()
         }
     }
