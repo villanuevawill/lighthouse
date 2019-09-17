@@ -161,11 +161,6 @@ where
     /// last-produced block (the head of the chain).
     ///
     /// Chain will be extended by `num_blocks` blocks.
-    ///
-    /// The `block_strategy` dictates where the new blocks will be placed.
-    ///
-    /// The `attestation_strategy` dictates which validators will attest to the newly created
-    /// blocks.
     pub fn extend_beacon_chain(
         &self,
         num_blocks: usize,
@@ -190,6 +185,49 @@ where
                 head_block_root = Some(block_root);
 
                 self.add_beacon_attestations_to_op_pool(
+                    &new_state,
+                    block_root,
+                    current_slot,
+                );
+            } else {
+                panic!("block should be successfully processed: {:?}", outcome);
+            }
+
+            state = new_state;
+            current_slot += 1;
+        }
+
+        head_block_root.expect("did not produce any blocks")
+    }
+
+    /// Extend the `ShardChain` with some blocks and attestations. Returns the root of the
+    /// last-produced block (the head of the chain).
+    ///
+    /// Chain will be extended by `num_blocks` blocks.
+    pub fn extend_shard_chain(
+        &self,
+        num_blocks: usize,
+    ) -> Hash256 {
+        let mut current_slot = self.shard_chain.read_slot_clock().unwrap();
+        let mut state = self.get_shard_state_at_slot(current_slot - 1);
+        let mut head_block_root = None;
+
+        for _ in 0..num_blocks {
+            while self.shard_chain.read_slot_clock().expect("should have a slot") < current_slot {
+                self.advance_shard_slot();
+            }
+
+            let (block, new_state) = self.build_shard_block(state.clone(), current_slot);
+
+            let outcome = self
+                .shard_chain
+                .process_block(block)
+                .expect("should not error during block processing");
+
+            if let ShardBlockProcessingOutcome::Processed { block_root } = outcome {
+                head_block_root = Some(block_root);
+
+                self.add_shard_attestations_to_op_pool(
                     &new_state,
                     block_root,
                     current_slot,
