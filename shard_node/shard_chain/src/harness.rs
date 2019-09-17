@@ -2,8 +2,8 @@ use beacon_chain::{BeaconChain, BeaconChainTypes, BlockProcessingOutcome};
 use crate::shard_chain::{ShardChain, ShardChainTypes, BlockProcessingOutcome as ShardBlockProcessingOutcome};
 use lmd_ghost::LmdGhost;
 use shard_lmd_ghost::{LmdGhost as ShardLmdGhost};
-use slot_clock::SlotClock;
-use slot_clock::TestingSlotClock;
+use slot_clock::{SlotClock, ShardSlotClock};
+use slot_clock::{TestingSlotClock, ShardTestingSlotClock};
 use state_processing::per_slot_processing;
 use std::marker::PhantomData;
 use std::sync::Arc;
@@ -55,7 +55,7 @@ where
     U: ShardSpec,
 {
     type Store = ShardMemoryStore;
-    type SlotClock = TestingSlotClock;
+    type SlotClock = ShardTestingSlotClock;
     type LmdGhost = T;
     type ShardSpec = U;
 }
@@ -108,10 +108,10 @@ where
             beacon_spec.seconds_per_slot,
         );
 
-        let shard_slot_clock = TestingSlotClock::new(
-            beacon_spec.genesis_slot,
+        let shard_slot_clock = ShardTestingSlotClock::new(
+            ShardSlot::from(shard_spec.phase_1_fork_slot),
             beacon_genesis_state.genesis_time,
-            beacon_spec.seconds_per_slot,
+            shard_spec.shard_seconds_per_slot,
         );
 
         let beacon_chain = BeaconChain::from_genesis(

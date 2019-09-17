@@ -9,7 +9,7 @@ use shard_store::iter::{
     BestBlockRootsIterator, BlockIterator, BlockRootsIterator, StateRootsIterator,
 };
 use shard_store::{Error as DBError, Store};
-use slot_clock::SlotClock;
+use slot_clock::{SlotClock, ShardSlotClock};
 use state_processing::{
     per_shard_block_processing, per_shard_slot_processing, ShardBlockProcessingError,
 };
@@ -43,7 +43,7 @@ pub enum BlockProcessingOutcome {
 
 pub trait ShardChainTypes {
     type Store: shard_store::Store;
-    type SlotClock: slot_clock::SlotClock;
+    type SlotClock: slot_clock::ShardSlotClock;
     type LmdGhost: LmdGhost<Self::Store, Self::ShardSpec>;
     type ShardSpec: types::ShardSpec;
 }
@@ -201,7 +201,7 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         let spec = &self.spec;
 
         let present_slot = match self.slot_clock.present_slot() {
-            Ok(Some(slot)) => slot.shard_slot(spec.slots_per_epoch, spec.shard_slots_per_epoch),
+            Ok(Some(slot)) => slot,
             _ => return Err(Error::UnableToReadSlot),
         };
 
@@ -261,7 +261,7 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
 
         match self.slot_clock.present_slot() {
             Ok(Some(some_slot)) => {
-                Some(some_slot.shard_slot(spec.slots_per_epoch, spec.shard_slots_per_epoch))
+                Some(some_slot)
             }
             Ok(None) => None,
             _ => None,
