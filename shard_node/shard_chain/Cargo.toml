@@ -24,10 +24,12 @@ serde_json = "1.0"
 slot_clock = { path = "../../eth2/utils/slot_clock" }
 eth2_ssz = { path = "../../eth2/utils/ssz" }
 eth2_ssz_derive = { path = "../../eth2/utils/ssz_derive" }
+rand = "0.5.5"
 state_processing = { path = "../../eth2/state_processing" }
 tree_hash = { path = "../../eth2/utils/tree_hash" }
 types = { path = "../../eth2/types" }
 shard_lmd_ghost = { path = "../../eth2/shard_lmd_ghost" }
+lmd_ghost = { path = "../../eth2/lmd_ghost" }
 
 [dev-dependencies]
 rand = "0.5.5"
