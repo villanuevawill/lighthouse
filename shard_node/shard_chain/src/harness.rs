@@ -69,9 +69,11 @@ where
     T: ShardLmdGhost<ShardMemoryStore, U>,
     U: ShardSpec,
 {
-    pub beacon_chain: BeaconChain<CommonBeaconTypes<L, E>>,
+    pub beacon_chain: Arc<BeaconChain<CommonBeaconTypes<L, E>>>,
     pub keypairs: Vec<Keypair>,
     pub beacon_spec: ChainSpec,
+    pub shard_chain: ShardChain<CommonShardTypes<T, U>, CommonBeaconTypes<L, E>>,
+    pub shard_spec: ChainSpec,
     _phantom_t: PhantomData<T>,
     _phantom_u: PhantomData<U>,
 }
@@ -86,6 +88,7 @@ where
     /// Instantiate a new harness with `validator_count` initial validators.
     pub fn new(validator_count: usize) -> Self {
         let beacon_spec = E::default_spec();
+        let shard_spec = U::default_spec();
 
         let beacon_store = Arc::new(MemoryStore::open());
         let shard_store = Arc::new(ShardMemoryStore::open());
@@ -93,6 +96,7 @@ where
         let beacon_state_builder =
             TestingBeaconStateBuilder::from_default_keypairs_file_if_exists(validator_count, &beacon_spec);
         let (beacon_genesis_state, keypairs) = beacon_state_builder.build();
+        let shard_state = ShardState::genesis(&shard_spec, 0);
 
         let mut beacon_genesis_block = BeaconBlock::empty(&beacon_spec);
         beacon_genesis_block.state_root = Hash256::from_slice(&beacon_genesis_state.tree_hash_root());
@@ -104,19 +108,37 @@ where
             beacon_spec.seconds_per_slot,
         );
 
+        let shard_slot_clock = TestingSlotClock::new(
+            beacon_spec.genesis_slot,
+            beacon_genesis_state.genesis_time,
+            beacon_spec.seconds_per_slot,
+        );
+
         let beacon_chain = BeaconChain::from_genesis(
             beacon_store,
             beacon_slot_clock,
             beacon_genesis_state,
             beacon_genesis_block,
             beacon_spec.clone(),
-        )
-        .expect("Terminate if beacon chain generation fails");
+        ).expect("Terminate if beacon chain generation fails");
+        let beacon_chain_reference = Arc::new(beacon_chain);
+
+        let shard_chain = ShardChain::from_genesis(
+            shard_store,
+            shard_slot_clock,
+            shard_state,
+            shard_spec.clone(),
+            0,
+            beacon_chain_reference.clone(),
+        ).expect("Terminate if beacon chain generation fails");
+
 
         Self {
-            beacon_chain,
+            beacon_chain: beacon_chain_reference.clone(),
             keypairs,
             beacon_spec,
+            shard_chain: shard_chain,
+            shard_spec,
             _phantom_t: PhantomData,
             _phantom_u: PhantomData,
         }
