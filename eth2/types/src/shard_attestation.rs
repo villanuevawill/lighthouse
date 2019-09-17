@@ -27,7 +27,6 @@ use tree_hash_derive::{CachedTreeHash, SignedRoot, TreeHash};
 pub struct ShardAttestation {
     pub aggregation_bitfield: Bitfield,
     pub data: ShardAttestationData,
-    pub custody_bitfield: Bitfield,
     #[signed_root(skip_hashing)]
     pub signature: AggregateSignature,
 }
@@ -49,7 +48,6 @@ impl ShardAttestation {
 
         self.aggregation_bitfield
             .union_inplace(&other.aggregation_bitfield);
-        self.custody_bitfield.union_inplace(&other.custody_bitfield);
         self.signature.add_aggregate(&other.signature);
     }
 }

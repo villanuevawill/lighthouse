@@ -4,7 +4,7 @@ use lmd_ghost::LmdGhost;
 use shard_lmd_ghost::{LmdGhost as ShardLmdGhost};
 use slot_clock::{SlotClock, ShardSlotClock};
 use slot_clock::{TestingSlotClock, ShardTestingSlotClock};
-use state_processing::per_slot_processing;
+use state_processing::{per_slot_processing, per_shard_slot_processing};
 use std::marker::PhantomData;
 use std::sync::Arc;
 use store::MemoryStore;
@@ -281,6 +281,45 @@ where
         (block, state)
     }
 
+    /// Returns a newly created block, signed by the proposer for the given slot.
+    fn build_shard_block(
+        &self,
+        mut state: ShardState<U>,
+        slot: ShardSlot,
+    ) -> (ShardBlock, ShardState<U>) {
+        let spec = &self.shard_spec;
+        if slot < state.slot {
+            panic!("produce slot cannot be prior to the state slot");
+        }
+
+        while state.slot < slot {
+            per_shard_slot_processing(&mut state, &self.shard_spec)
+                .expect("should be able to advance state to slot");
+        }
+
+        state.build_cache(&self.shard_spec).unwrap();
+
+        let proposer_index = self.shard_chain
+            .block_proposer(slot)
+            .expect("should get block proposer from chain");
+
+        let sk = &self.keypairs[proposer_index].sk;
+        let (mut block, state) = self
+            .shard_chain
+            .produce_block_on_state(state, slot)
+            .expect("should produce block");
+
+        block.signature = {
+            let message = block.signed_root();
+            let epoch = block.slot.epoch(spec.slots_per_epoch, spec.shard_slots_per_beacon_slot);
+            // need to actually handle forks correctly
+            let domain = self.shard_spec.get_domain(epoch, Domain::ShardProposer, &self.beacon_chain.current_state().fork);
+            Signature::new(&message, domain, sk)
+        };
+
+        (block, state)
+    }
+
     /// Adds attestations to the `BeaconChain` operations pool to be included in future blocks.
     ///
     /// The `attestation_strategy` dictates which validators should attest.
@@ -354,6 +393,62 @@ where
                     }
                 }
             });
+    }
+
+    fn add_shard_attestations_to_op_pool(
+        &self,
+        state: &ShardState<U>,
+        head_block_root: Hash256,
+        head_block_slot: ShardSlot,
+    ) {
+        let spec = &self.shard_spec;
+        let fork = &self.beacon_chain.current_state().fork;
+
+        let attesting_validators: Vec<usize> = (0..self.keypairs.len()).collect();
+
+        let shard_committee = self.shard_chain.shard_committee(head_block_slot.epoch(spec.slots_per_epoch, spec.shard_slots_per_beacon_slot)).expect("should get committees");
+        let committee_size = shard_committee.committee.len();
+
+        for (i, validator_index) in shard_committee.committee.iter().enumerate() {
+                if attesting_validators.contains(validator_index) {
+                let data = self
+                    .shard_chain
+                    .produce_attestation_data_for_block(
+                        head_block_root,
+                        head_block_slot,
+                        state,
+                    )
+                    .expect("should produce attestation data");
+
+                let mut aggregation_bitfield = Bitfield::new();
+                aggregation_bitfield.set(i, true);
+                aggregation_bitfield.set(committee_size, false);
+
+                let signature = {
+                    let message = data.tree_hash_root();
+                    let domain =
+                        spec.get_domain(data.target_slot.epoch(spec.slots_per_epoch, spec.shard_slots_per_beacon_slot), Domain::ShardAttestation, fork);
+
+                    let mut agg_sig = AggregateSignature::new();
+                    agg_sig.add(&Signature::new(
+                        &message,
+                        domain,
+                        self.get_sk(*validator_index),
+                    ));
+
+                    agg_sig
+                };
+
+                let attestation = ShardAttestation {
+                    aggregation_bitfield,
+                    data,
+                    signature,
+                };
+
+                self.shard_chain
+                    .process_attestation(attestation);
+            }
+        }
     }
 
     /// Returns the secret key for the given validator index.
