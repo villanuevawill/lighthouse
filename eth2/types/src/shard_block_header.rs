@@ -28,7 +28,7 @@ pub struct ShardBlockHeader {
     pub beacon_block_root: Hash256,
     pub state_root: Hash256,
     // need to add body
-    pub attestation: ShardAttestation,
+    pub attestation: Vec<ShardAttestation>,
     #[signed_root(skip_hashing)]
     pub signature: Signature,
 }
@@ -41,7 +41,7 @@ impl ShardBlockHeader {
             beacon_block_root: spec.zero_hash,
             parent_root: spec.zero_hash,
             state_root: spec.zero_hash,
-            attestation: ShardAttestation::default(),
+            attestation: vec![],
             signature: Signature::empty_signature(),
         }
     }
@@ -74,12 +74,4 @@ impl ShardBlockHeader {
             signature: self.signature.clone(),
         }
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    ssz_tests!(ShardBlockHeader);
-    cached_tree_hash_tests!(ShardBlockHeader);
 }

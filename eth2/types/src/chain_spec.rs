@@ -279,13 +279,13 @@ impl ChainSpec {
             min_attestation_inclusion_delay: 2,
             slots_per_eth1_voting_period: 16,
             genesis_slot,
-            epochs_per_shard_period: 8,
+            epochs_per_shard_period: 4,
             chain_id: 2, // lighthouse testnet chain id
             boot_nodes,
             slots_per_epoch: 8,
             shard_slots_per_epoch: 16,
             phase_1_fork_slot: 96,
-            phase_1_fork_epoch: 6,
+            phase_1_fork_epoch: 12,
             ..ChainSpec::mainnet()
         }
     }
