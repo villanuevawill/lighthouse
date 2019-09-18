@@ -378,6 +378,14 @@ where
             .iter()
             .for_each(|cc| {
                 let committee_size = cc.committee.len();
+                let shard = cc.shard;
+
+                let crosslink_data_root = match shard {
+                    0 => self.shard_chain.get_block_root_at_epoch(state.current_epoch())
+                            .expect("should get crosslink root")
+                            .unwrap_or(Hash256::zero()),
+                    _ => Hash256::zero(),
+                };
 
                 for (i, validator_index) in cc.committee.iter().enumerate() {
                      if attesting_validators.contains(validator_index) {
@@ -387,6 +395,7 @@ where
                                 cc.shard,
                                 head_block_root,
                                 head_block_slot,
+                                crosslink_data_root,
                                 state,
                             )
                             .expect("should produce attestation data");
