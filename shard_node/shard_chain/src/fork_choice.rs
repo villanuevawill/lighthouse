@@ -2,7 +2,6 @@ use crate::{ShardChain, ShardChainError, ShardChainTypes};
 use beacon_chain::BeaconChainTypes;
 use shard_lmd_ghost::LmdGhost;
 use shard_store::{Error as StoreError, Store};
-use state_processing::common::get_shard_attesting_indices_unsorted;
 use std::sync::Arc;
 use store::{Error as BeaconStoreError, Store as BeaconStore};
 use types::{

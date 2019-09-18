@@ -4,7 +4,7 @@ use lmd_ghost::LmdGhost;
 use shard_lmd_ghost::{LmdGhost as ShardLmdGhost};
 use slot_clock::{SlotClock, ShardSlotClock};
 use slot_clock::{TestingSlotClock, ShardTestingSlotClock};
-use state_processing::{per_slot_processing, per_shard_slot_processing};
+use shard_state_processing::{per_shard_block_processing, per_shard_slot_processing};
 use std::marker::PhantomData;
 use std::sync::Arc;
 use store::MemoryStore;
@@ -286,7 +286,7 @@ where
         }
 
         while state.slot < slot {
-            per_slot_processing(&mut state, &self.beacon_spec)
+            per_shard_slot_processing(&mut state, &self.beacon_spec)
                 .expect("should be able to advance state to slot");
         }
 

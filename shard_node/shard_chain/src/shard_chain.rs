@@ -10,8 +10,10 @@ use shard_store::iter::{
 };
 use shard_store::{Error as DBError, Store};
 use slot_clock::{SlotClock, ShardSlotClock};
-use state_processing::{
-    per_shard_block_processing, per_shard_slot_processing, ShardBlockProcessingError,
+use shard_state_processing::{
+    ShardBlockProcessingError,
+    ShardSlotProcessingError,
+    per_shard_block_processing, per_shard_slot_processing,
 };
 use std::sync::Arc;
 use store::{Error as BeaconDBError, Store as BeaconStore};

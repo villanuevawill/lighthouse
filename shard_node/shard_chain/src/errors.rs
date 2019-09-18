@@ -48,7 +48,7 @@ pub enum BlockProductionError {
     UnableToReadSlot,
     ShardSlotProcessingError(ShardSlotProcessingError),
     ShardBlockProcessingError(ShardBlockProcessingError),
-    BlockProcessingError(BlockProcessingError),
+    BlockProcessingError(ShardBlockProcessingError),
     ShardStateError(ShardStateError),
     BeaconStateError(BeaconStateError),
 }
