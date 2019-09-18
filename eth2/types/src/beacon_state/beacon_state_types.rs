@@ -136,7 +136,7 @@ pub struct MinimalEthSpec;
 impl EthSpec for MinimalEthSpec {
     type ShardCount = U8;
     type SlotsPerHistoricalRoot = U64;
-    type PeriodCommitteeRootsLength = U64;
+    type PeriodCommitteeRootsLength = U256;
     type LatestRandaoMixesLength = U1024;
     type LatestActiveIndexRootsLength = U1024;
     type LatestSlashedExitLength = U64;

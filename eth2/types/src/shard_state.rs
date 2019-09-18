@@ -49,13 +49,6 @@ where
     #[tree_hash(skip_hashing)]
     #[test_random(default)]
     pub tree_hash_cache: TreeHashCache,
-
-    #[serde(skip_serializing, skip_deserializing)]
-    #[ssz(skip_serializing)]
-    #[ssz(skip_deserializing)]
-    #[tree_hash(skip_hashing)]
-    #[test_random(default)]
-    _phantom: PhantomData<T>,
 }
 
 impl<T: ShardSpec> ShardState<T> {
@@ -69,7 +62,6 @@ impl<T: ShardSpec> ShardState<T> {
             ]),
             latest_block_header: ShardBlockHeader::empty(spec, shard),
             tree_hash_cache: TreeHashCache::default(),
-            _phantom: PhantomData,
         }
     }
 
