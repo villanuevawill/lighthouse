@@ -1,8 +1,8 @@
-pub mod shard_chain;
 pub mod checkpoint;
 pub mod errors;
 pub mod fork_choice;
+pub mod shard_chain;
 
-pub use self::shard_chain::{ShardChain, ShardChainTypes};
 pub use self::checkpoint::CheckPoint;
-pub use self::errors::{ShardChainError, BlockProductionError};
+pub use self::errors::{BlockProductionError, ShardChainError};
+pub use self::shard_chain::{ShardChain, ShardChainTypes};

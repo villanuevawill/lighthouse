@@ -1,6 +1,5 @@
 use crate::*;
 
-
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Error {
     PeriodTooLow { base: Period, other: Period },

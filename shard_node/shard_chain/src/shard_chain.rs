@@ -1,27 +1,25 @@
 use crate::checkpoint::CheckPoint;
-use crate::errors::{ShardChainError as Error, BlockProductionError};
-use beacon_chain::{BeaconChain, BeaconChainTypes};
+use crate::errors::{BlockProductionError, ShardChainError as Error};
 use crate::fork_choice::{Error as ForkChoiceError, ForkChoice};
-use shard_lmd_ghost::LmdGhost;
-use shard_operation_pool::{OperationPool};
+use beacon_chain::{BeaconChain, BeaconChainTypes};
 use parking_lot::{RwLock, RwLockReadGuard};
+use shard_lmd_ghost::LmdGhost;
+use shard_operation_pool::OperationPool;
+use shard_store::iter::{
+    BestBlockRootsIterator, BlockIterator, BlockRootsIterator, StateRootsIterator,
+};
+use shard_store::{Error as DBError, Store};
 use slot_clock::SlotClock;
-use state_processing::{
-    per_shard_block_processing,
-    per_shard_slot_processing, ShardBlockProcessingError,
+// use shard_state_processing::per_slot_processing::errors::*;
+use shard_state_processing::{
+    ShardBlockProcessingError,
+    ShardSlotProcessingError,
+    per_shard_block_processing, per_shard_slot_processing, 
 };
 use std::sync::Arc;
-use store::{Store as BeaconStore, Error as BeaconDBError};
-use shard_store::iter::{BestBlockRootsIterator, BlockIterator, BlockRootsIterator, StateRootsIterator};
-use shard_store::{Error as DBError, Store};
+use store::{Error as BeaconDBError, Store as BeaconStore};
 use tree_hash::TreeHash;
 use types::*;
-
-// Text included in blocks.
-// Must be 32-bytes or panic.
-//
-//                          |-------must be this long------|
-pub const GRAFFITI: &str = "sigp/lighthouse-0.0.0-prerelease";
 
 #[derive(Debug, PartialEq)]
 pub enum BlockProcessingOutcome {
@@ -64,7 +62,7 @@ pub struct ShardChain<T: ShardChainTypes, L: BeaconChainTypes> {
     canonical_head: RwLock<CheckPoint<T::ShardSpec>>,
     state: RwLock<ShardState<T::ShardSpec>>,
     genesis_block_root: Hash256,
-    pub crosslink_root: Hash256,
+    pub crosslink_root: RwLock<Hash256>,
     pub fork_choice: ForkChoice<T>,
 }
 
@@ -106,7 +104,7 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
             state: RwLock::new(genesis_state),
             canonical_head,
             genesis_block_root,
-            crosslink_root: Hash256::default(),
+            crosslink_root: RwLock::new(Hash256::default()),
             fork_choice: ForkChoice::new(store.clone(), &genesis_block, genesis_block_root),
             store,
         })
@@ -140,7 +138,10 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
     /// Returns `None` for roots prior to genesis or when there is an error reading from `Store`.
     ///
     /// Contains duplicate roots when skip slots are encountered.
-    pub fn rev_iter_block_roots(&self, slot: ShardSlot) -> BlockRootsIterator<T::ShardSpec, T::Store> {
+    pub fn rev_iter_block_roots(
+        &self,
+        slot: ShardSlot,
+    ) -> BlockRootsIterator<T::ShardSpec, T::Store> {
         BlockRootsIterator::owned(self.store.clone(), self.state.read().clone(), slot)
     }
 
@@ -161,7 +162,10 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
     /// genesis.
     ///
     /// Returns `None` for roots prior to genesis or when there is an error reading from `Store`.
-    pub fn rev_iter_state_roots(&self, slot: ShardSlot) -> StateRootsIterator<T::ShardSpec, T::Store> {
+    pub fn rev_iter_state_roots(
+        &self,
+        slot: ShardSlot,
+    ) -> StateRootsIterator<T::ShardSpec, T::Store> {
         StateRootsIterator::owned(self.store.clone(), self.state.read().clone(), slot)
     }
 
@@ -257,9 +261,11 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
     /// `self.state` should undergo per slot processing.
     pub fn read_slot_clock(&self) -> Option<ShardSlot> {
         let spec = &self.spec;
-        
+
         match self.slot_clock.present_slot() {
-            Ok(Some(some_slot)) => Some(some_slot.shard_slot(spec.slots_per_epoch, spec.shard_slots_per_epoch)),
+            Ok(Some(some_slot)) => {
+                Some(some_slot.shard_slot(spec.slots_per_epoch, spec.shard_slots_per_epoch))
+            }
             Ok(None) => None,
             _ => None,
         }
@@ -271,7 +277,6 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         let now = self.read_slot_clock()?;
         let spec = &self.spec;
         let genesis_slot = spec.phase_1_fork_epoch * spec.shard_slots_per_epoch;
-
 
         if now < genesis_slot {
             None
@@ -289,12 +294,14 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         self.state.read().slot
     }
 
-    pub fn check_for_new_crosslink(mut self) -> Result<(), Error> {
+    pub fn check_for_new_crosslink(&self) -> Result<(), Error> {
         let beacon_state = self.parent_beacon.current_state();
-        let crosslink_root = beacon_state.get_current_crosslink(self.shard)?.crosslink_data_root;
-        let current_crossslink_root = self.crosslink_root;
+        let crosslink_root = beacon_state
+            .get_current_crosslink(self.shard)?
+            .crosslink_data_root;
+        let current_crossslink_root = *self.crosslink_root.read();
         if crosslink_root != current_crossslink_root {
-            self.crosslink_root = crosslink_root;
+            *self.crosslink_root.write() = crosslink_root;
             self.after_crosslink(crosslink_root);
         }
         Ok(())
@@ -304,55 +311,59 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
     ///
     /// Information is read from the present `beacon_state`
     pub fn block_proposer(&self, slot: ShardSlot, shard: u64) -> Result<usize, Error> {
-        // Ensures that the present state has been advanced to the present slot, skipping slots if
-        // blocks are not present.
-        self.catchup_state()?;
-
-        let index = self.parent_beacon.current_state().get_shard_proposer_index(
-            shard,
-            slot,
-        )?;
+        let index = self
+            .parent_beacon
+            .current_state()
+            .get_shard_proposer_index(shard, slot)?;
 
         Ok(index)
     }
 
-    // /// Produce an `AttestationData` that is valid for the present `slot` and given `shard`.
-    // ///
-    // /// Attests to the canonical chain.
-    // pub fn produce_attestation_data(&self) -> Result<ShardAttestationData, Error> {
-    //     let state = self.state.read();
-    //     let head_block_root = self.head().shard_block_root;
-    //     let head_block_slot = self.head().shard_block.slot;
+    pub fn shard_committee(&self, epoch: Epoch, shard: u64) -> Result<ShardCommittee, Error> {
+        let shard_committee = self
+            .parent_beacon
+            .current_state()
+            .get_shard_committee(epoch, shard)?;
+        Ok(shard_committee)
+    }
 
-    //     self.produce_attestation_data_for_block(head_block_root, head_block_slot, &*state)
-    // }
+    /// Produce an `AttestationData` that is valid for the present `slot` and given `shard`.
+    ///
+    /// Attests to the canonical chain.
+    pub fn produce_attestation_data(&self) -> Result<ShardAttestationData, Error> {
+        let state = self.state.read();
+        let head_block_root = self.head().shard_block_root;
+        let head_block_slot = self.head().shard_block.slot;
 
-    // /// Produce an `AttestationData` that attests to the chain denoted by `block_root` and `state`.
-    // ///
-    // /// Permits attesting to any arbitrary chain. Generally, the `produce_attestation_data`
-    // /// function should be used as it attests to the canonical chain.
-    // pub fn produce_attestation_data_for_block(
-    //     &self,
-    //     head_block_root: Hash256,
-    //     head_block_slot: Slot,
-    //     state: &ShardState<T::EthSpec>,
-    // ) -> Result<ShardAttestationData, Error> {
+        self.produce_attestation_data_for_block(head_block_root, head_block_slot, &*state)
+    }
 
-    //     Ok(AttestationData {
-    //         shard_block_root: head_block_root,
-    //     })
-    // }
+    /// Produce an `AttestationData` that attests to the chain denoted by `block_root` and `state`.
+    ///
+    /// Permits attesting to any arbitrary chain. Generally, the `produce_attestation_data`
+    /// function should be used as it attests to the canonical chain.
+    pub fn produce_attestation_data_for_block(
+        &self,
+        head_block_root: Hash256,
+        head_block_slot: ShardSlot,
+        state: &ShardState<T::ShardSpec>,
+    ) -> Result<ShardAttestationData, Error> {
+        Ok(ShardAttestationData {
+            shard_block_root: head_block_root,
+            target_slot: head_block_slot,
+        })
+    }
 
     /// Accept a new attestation from the network.
     ///
     /// If valid, the attestation is added to the `op_pool` and aggregated with another attestation
     /// if possible.
-    pub fn process_attestation(
-        &self,
-        attestation: ShardAttestation,
-    ) -> () {
-        self.op_pool
-            .insert_attestation(attestation, &self.parent_beacon.current_state(), &self.spec);
+    pub fn process_attestation(&self, attestation: ShardAttestation) -> () {
+        self.op_pool.insert_attestation(
+            attestation,
+            &self.parent_beacon.current_state(),
+            &self.spec,
+        );
     }
 
     /// Accept some block and attempt to add it to block DAG.
@@ -361,7 +372,7 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
     pub fn process_block(&self, block: ShardBlock) -> Result<BlockProcessingOutcome, Error> {
         let spec = &self.spec;
         let beacon_state = &self.parent_beacon.current_state();
-        
+
         let finalized_slot = beacon_state
             .finalized_epoch
             .start_slot(spec.slots_per_epoch)
@@ -438,10 +449,10 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         // Store the block and state.
         self.store.put(&block_root, &block)?;
         self.store.put(&state_root, &state)?;
-        
 
         // Register the new block with the fork choice service.
-        self.fork_choice.process_block(&beacon_state, &block, block_root)?;
+        self.fork_choice
+            .process_block(&beacon_state, &block, block_root)?;
 
         // Execute the fork choice algorithm, enthroning a new head if discovered.
         //
@@ -451,70 +462,70 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         Ok(BlockProcessingOutcome::Processed { block_root })
     }
 
-    // /// Produce a new block at the present slot.
-    // ///
-    // /// The produced block will not be inherently valid, it must be signed by a block producer.
-    // /// Block signing is out of the scope of this function and should be done by a separate program.
-    // pub fn produce_block(
-    //     &self,
-    // ) -> Result<(ShardBlock, ShardState<T::EthSpec>), BlockProductionError> {
-    //     let state = self.state.read().clone();
-    //     let slot = self
-    //         .read_slot_clock()
-    //         .ok_or_else(|| BlockProductionError::UnableToReadSlot)?;
+    /// Produce a new block at the present slot.
+    ///
+    /// The produced block will not be inherently valid, it must be signed by a block producer.
+    /// Block signing is out of the scope of this function and should be done by a separate program.
+    pub fn produce_block(
+        &self,
+    ) -> Result<(ShardBlock, ShardState<T::ShardSpec>), BlockProductionError> {
+        let state = self.state.read().clone();
+        let slot = self
+            .read_slot_clock()
+            .ok_or_else(|| BlockProductionError::UnableToReadSlot)?;
 
-    //     self.produce_block_on_state(state, slot)
-    // }
+        self.produce_block_on_state(state, slot)
+    }
 
-    // /// Produce a block for some `slot` upon the given `state`.
-    // ///
-    // /// Typically the `self.produce_block()` function should be used, instead of calling this
-    // /// function directly. This function is useful for purposefully creating forks or blocks at
-    // /// non-current slots.
-    // ///
-    // /// The given state will be advanced to the given `produce_at_slot`, then a block will be
-    // /// produced at that slot height.
-    // pub fn produce_block_on_state(
-    //     &self,
-    //     mut state: ShardState<T::EthSpec>,
-    //     produce_at_slot: Slot,
-    // ) -> Result<(ShardBlock, ShardState<T::EthSpec>), BlockProductionError> {
-    //     // If required, transition the new state to the present slot.
-    //     while state.slot < produce_at_slot {
-    //         per_slot_processing(&mut state, &self.spec)?;
-    //     }
+    /// Produce a block for some `slot` upon the given `state`.
+    ///
+    /// Typically the `self.produce_block()` function should be used, instead of calling this
+    /// function directly. This function is useful for purposefully creating forks or blocks at
+    /// non-current slots.
+    ///
+    /// The given state will be advanced to the given `produce_at_slot`, then a block will be
+    /// produced at that slot height.
+    pub fn produce_block_on_state(
+        &self,
+        mut state: ShardState<T::ShardSpec>,
+        produce_at_slot: ShardSlot,
+    ) -> Result<(ShardBlock, ShardState<T::ShardSpec>), BlockProductionError> {
+        // If required, transition the new state to the present slot.
+        while state.slot < produce_at_slot {
+            per_shard_slot_processing(&mut state, &self.spec)?;
+        }
 
-    //     let previous_block_root = if state.slot > 0 {
-    //         *state
-    //             .get_block_root(state.slot - 1)
-    //             .map_err(|_| BlockProductionError::UnableToGetBlockRootFromState)?
-    //     } else {
-    //         state.latest_block_header.canonical_root()
-    //     };
+        let spec = &self.spec;
+        let parent_root = state.latest_block_header.canonical_root();
+        let beacon_state = self.parent_beacon.current_state();
+        let beacon_block_root_epoch = state
+            .latest_block_header
+            .slot
+            .epoch(spec.slots_per_epoch, spec.shard_slots_per_beacon_slot);
+        let beacon_block_root = beacon_state
+            .get_block_root_at_epoch(beacon_block_root_epoch)?
+            .clone();
 
-    //     let mut graffiti: [u8; 32] = [0; 32];
-    //     graffiti.copy_from_slice(GRAFFITI.as_bytes());
+        let mut block = ShardBlock {
+            shard: state.shard,
+            slot: state.slot,
+            beacon_block_root,
+            parent_root,
+            state_root: Hash256::zero(),
+            attestation: self.op_pool.get_attestation(
+                &state,
+                &self.parent_beacon.current_state(),
+                spec,
+            ),
+            signature: Signature::empty_signature(),
+        };
 
-    //     let mut block = ShardBlock {
-    //         slot: state.slot,
-    //         previous_block_root,
-    //         state_root: Hash256::zero(), // Updated after the state is calculated.
-    //         signature: Signature::empty_signature(), // To be completed by a validator.
-    //         // need to add the attestations here
-    //         body: ShardBlockBody {
-    //             graffiti,
-    //             attestations: self.op_pool.get_attestations(&state, &self.spec),
-    //         },
-    //     };
+        per_shard_block_processing(&beacon_state, &mut state, &block, spec);
+        let state_root = state.canonical_root();
+        block.state_root = state_root;
 
-    //     per_block_processing_without_verifying_block_signature(&mut state, &block, &self.spec)?;
-
-    //     let state_root = state.canonical_root();
-
-    //     block.state_root = state_root;
-
-    //     Ok((block, state))
-    // }
+        Ok((block, state))
+    }
 
     /// Execute the fork choice algorithm and enthrone the result as the canonical head.
     pub fn fork_choice(&self) -> Result<(), Error> {
@@ -591,11 +602,6 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
 
         Ok(())
     }
-
-    // /// Returns `true` if the given block root has not been processed.
-    // pub fn is_new_block_root(&self, shard_block_root: &Hash256) -> Result<bool, Error> {
-    //     Ok(!self.store.exists::<ShardBlock>(shard_block_root)?)
-    // }
 }
 
 impl From<DBError> for Error {

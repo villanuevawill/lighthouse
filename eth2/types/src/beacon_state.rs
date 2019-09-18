@@ -455,13 +455,6 @@ impl<T: EthSpec> BeaconState<T> {
             .get_period_committee(RelativePeriod::Current, shard)?
             .committee;
 
-        // double referencing, why?
-        // NOTE: making a copy here?
-        // NOTE: does lighthouse typically use iterators?
-        // NOTE: look at op_pool and lmd_ghost iterator class in store to see how they are
-        // currenlty doing this
-        // NOTE: shard slot tests, shard_committee tests, other tests for phase 1 structs we
-        // added
         let mut union: Vec<usize> = earlier_committee
             .iter()
             .filter(|member| {
@@ -475,7 +468,7 @@ impl<T: EthSpec> BeaconState<T> {
             // clone method is used so we don't have to dereference anything
             .cloned()
             .collect::<Vec<usize>>();
-
+        
         union.dedup();
 
         Ok(ShardCommittee {
@@ -485,11 +478,7 @@ impl<T: EthSpec> BeaconState<T> {
         })
     }
 
-    pub fn get_shard_proposer_index(
-        &self,
-        shard: u64,
-        slot: ShardSlot,
-    ) -> Result<usize, Error> {
+    pub fn get_shard_proposer_index(&self, shard: u64, slot: ShardSlot) -> Result<usize, Error> {
         let spec = T::default_spec();
         let current_epoch = self.current_epoch();
         let target_epoch = slot.epoch(spec.shard_slots_per_epoch, spec.shard_slots_per_beacon_slot);
@@ -504,6 +493,8 @@ impl<T: EthSpec> BeaconState<T> {
         let committee = self.get_shard_committee(target_epoch, shard)?.committee;
 
         let mut i = 0;
+
+        let active_indices = self.get_active_validator_indices(current_epoch);
 
         Ok(loop {
             let candidate_index = active_indices[(slot.as_usize() + i) % committee.len()];

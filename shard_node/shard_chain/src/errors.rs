@@ -1,9 +1,10 @@
 use crate::fork_choice::Error as ForkChoiceError;
 // use crate::metrics::Error as MetricsError;
-use state_processing::BlockProcessingError;
-use state_processing::ShardSlotProcessingError;
-use state_processing::ShardBlockProcessingError;
-use store::{Error as BeaconDBError};
+// use shard_state_processing::per_shard_slot_processing::Error;
+// use shard_state_processing::per_shard_block_processing::ShardBlockProcessingError;
+use shard_state_processing::ShardBlockProcessingError;
+use shard_state_processing::ShardSlotProcessingError;
+use store::Error as BeaconDBError;
 use types::*;
 
 macro_rules! easy_from_to {
@@ -49,14 +50,14 @@ pub enum BlockProductionError {
     UnableToReadSlot,
     ShardSlotProcessingError(ShardSlotProcessingError),
     ShardBlockProcessingError(ShardBlockProcessingError),
-    BlockProcessingError(BlockProcessingError),
+    BlockProcessingError(ShardBlockProcessingError),
     ShardStateError(ShardStateError),
     BeaconStateError(BeaconStateError),
 }
 
-easy_from_to!(BlockProcessingError, BlockProductionError);
+easy_from_to!(ShardBlockProcessingError, BlockProductionError);
 easy_from_to!(ShardStateError, BlockProductionError);
 easy_from_to!(BeaconStateError, BlockProductionError);
 easy_from_to!(BeaconStateError, ShardChainError);
 easy_from_to!(ShardSlotProcessingError, BlockProductionError);
-easy_from_to!(ShardBlockProcessingError, BlockProductionError);
+// easy_from_to!(ShardBlockProcessingError, BlockProductionError);

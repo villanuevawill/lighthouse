@@ -1,9 +1,10 @@
+use crate::*;
 use types::*;
+use errors::{
+    Error
+};
 
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    BlockProcessingError,
-}
+pub mod errors;
 
 pub fn per_shard_block_processing<T: EthSpec, U: ShardSpec>(
     beacon_state: &BeaconState<T>,
@@ -23,6 +24,10 @@ pub fn process_shard_block_header<T: EthSpec, U: ShardSpec>(
     block: &ShardBlock,
     spec: &ChainSpec,
 ) -> Result<(), Error> {
+//     verify!(block.slot == state.slot, Error::BlockProcessingError);
+    // NOTE: synonymous to the temporary_block_header in beacon_state processing
     state.latest_block_header = block.block_header();
+    // needs to be ShardBlockHeader.core
+    
     Ok(())
 }

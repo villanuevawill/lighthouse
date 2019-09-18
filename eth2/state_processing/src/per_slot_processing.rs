@@ -14,6 +14,7 @@ pub fn per_slot_processing<T: EthSpec>(
     state: &mut BeaconState<T>,
     spec: &ChainSpec,
 ) -> Result<(), Error> {
+    // NOTE: there's no specific error handling here, within this function
     cache_state(state, spec)?;
 
     if (state.slot > spec.genesis_slot) && ((state.slot + 1) % T::slots_per_epoch() == 0) {

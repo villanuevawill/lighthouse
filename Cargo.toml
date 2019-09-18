@@ -5,6 +5,7 @@ members = [
 	"eth2/operation_pool",
 	"eth2/shard_operation_pool",
 	"eth2/state_processing",
+    "eth2/shard_state_processing",
 	"eth2/types",
 	"eth2/utils/bls",
 	"eth2/utils/boolean-bitfield",
