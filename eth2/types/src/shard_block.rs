@@ -28,7 +28,7 @@ pub struct ShardBlock {
     pub parent_root: Hash256,
     pub state_root: Hash256,
     // add body
-    pub attestation: ShardAttestation,
+    pub attestation: Vec<ShardAttestation>,
     #[signed_root(skip_hashing)]
     pub signature: Signature,
 }
@@ -41,7 +41,7 @@ impl ShardBlock {
             beacon_block_root: spec.zero_hash,
             parent_root: spec.zero_hash,
             state_root: spec.zero_hash,
-            attestation: ShardAttestation::default(),
+            attestation: vec![],
             signature: Signature::empty_signature(),
         }
     }

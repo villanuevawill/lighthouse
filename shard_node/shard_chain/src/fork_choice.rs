@@ -83,7 +83,7 @@ impl<T: ShardChainTypes> ForkChoice<T> {
         block: &ShardBlock,
         block_root: Hash256,
     ) -> Result<()> {
-        self.process_attestation_from_block(beacon_state, &block.attestation, block)?;
+        self.process_attestation_from_block(beacon_state, &block.attestation[0], block)?;
         self.backend.process_block(block, block_root)?;
 
         Ok(())

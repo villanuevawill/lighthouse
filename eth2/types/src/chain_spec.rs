@@ -253,10 +253,15 @@ impl ChainSpec {
 
         Self {
             target_committee_size: 4,
+            target_period_committee_size: 4,
+            epochs_per_shard_period: 4,
             shuffle_round_count: 10,
             min_genesis_active_validator_count: 64,
             target_period_committee_size: 4,
             max_epochs_per_crosslink: 4,
+            shard_slots_per_epoch: 16,
+            phase_1_fork_slot: 96,
+            phase_1_fork_epoch: 12,
             network_id: 2, // lighthouse testnet network id
             boot_nodes,
             ..ChainSpec::mainnet()
@@ -272,10 +277,7 @@ impl ChainSpec {
         Self {
             milliseconds_per_slot: 12_000,
             target_committee_size: 4,
-            target_period_committee_size: 4,
             shuffle_round_count: 10,
-            network_id: 13,
-            boot_nodes,
             ..ChainSpec::mainnet()
         }
     }
