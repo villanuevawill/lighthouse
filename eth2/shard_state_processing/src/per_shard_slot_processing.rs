@@ -27,9 +27,3 @@ pub fn per_shard_slot_processing<T: ShardSpec>(
 
     Ok(())
 }
-
-// impl From<ShardStateError> for Error {
-//     fn from(e: ShardStateError) -> Error {
-//         Error::ShardStateError(e)
-//     }
-// }
