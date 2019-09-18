@@ -1,9 +1,8 @@
+use crate::*;
 use types::*;
+use errors::Error;
 
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    BlockProcessingError,
-}
+pub mod errors;
 
 pub fn per_shard_block_processing<T: EthSpec, U: ShardSpec>(
     beacon_state: &BeaconState<T>,
