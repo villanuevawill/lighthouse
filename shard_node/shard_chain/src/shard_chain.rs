@@ -175,6 +175,19 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         Ok(self.store.get(block_root)?)
     }
 
+    pub fn get_block_root_at_epoch(&self, epoch: Epoch) -> Result<Option<Hash256>, Error> {
+        let spec = &self.spec;
+        let start_slot_at_epoch = epoch.start_slot(self.spec.slots_per_epoch).shard_slot(spec.slots_per_epoch, spec.shard_slots_per_epoch);
+        let current_slot = self.state.read().slot;
+        let root = self.rev_iter_block_roots(current_slot)
+            .find(|(_hash, slot)| slot.as_u64() == start_slot_at_epoch.as_u64());
+
+        Ok(match root {
+            Some(root) => Some(root.0),
+            None => None,
+        })
+    }
+
     /// Returns a read-lock guarded `ShardState` which is the `canonical_head` that has been
     /// updated to match the current slot clock.
     pub fn current_state(&self) -> RwLockReadGuard<ShardState<T::ShardSpec>> {
