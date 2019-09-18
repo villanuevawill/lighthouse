@@ -2,10 +2,10 @@ use crate::*;
 use tree_hash::TreeHash;
 use types::*;
 
-use process_shard_slot::process_shard_slot;
-
-pub mod errors;
-pub mod process_shard_slot;
+#[derive(Debug, PartialEq)]
+pub enum Error {
+    ShardStateError(ShardStateError),
+}
 
 pub fn per_shard_slot_processing<T: ShardSpec>(
     state: &mut ShardState<T>,
@@ -28,8 +28,25 @@ pub fn per_shard_slot_processing<T: ShardSpec>(
     Ok(())
 }
 
-// impl From<ShardStateError> for Error {
-//     fn from(e: ShardStateError) -> Error {
-//         Error::ShardStateError(e)
-//     }
-// }
+// need to put this in separate directory (process slots)
+fn process_shard_slot<T: ShardSpec>(state: &mut ShardState<T>, spec: &ChainSpec) -> () {
+    let previous_state_root = Hash256::from_slice(&state.tree_hash_root()[..]);
+
+    if state.latest_block_header.state_root == spec.zero_hash {
+        state.latest_block_header.state_root = previous_state_root;
+    }
+
+    let mut depth = 0;
+    while (state.slot.as_u64() % u64::pow(2, depth as u32) == 0 as u64)
+        && (depth < T::history_accumulator_depth() as u64)
+    {
+        state.history_accumulator[depth as usize] = previous_state_root;
+        depth += 1;
+    }
+}
+
+impl From<ShardStateError> for Error {
+    fn from(e: ShardStateError) -> Error {
+        Error::ShardStateError(e)
+    }
+}
