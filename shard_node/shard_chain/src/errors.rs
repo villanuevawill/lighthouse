@@ -1,8 +1,7 @@
 use crate::fork_choice::Error as ForkChoiceError;
 // use crate::metrics::Error as MetricsError;
-use state_processing::BlockProcessingError;
-use state_processing::ShardBlockProcessingError;
-use state_processing::ShardSlotProcessingError;
+use shard_state_processing::ShardBlockProcessingError;
+use shard_state_processing::ShardSlotProcessingError;
 use store::Error as BeaconDBError;
 use types::*;
 
@@ -54,7 +53,7 @@ pub enum BlockProductionError {
     BeaconStateError(BeaconStateError),
 }
 
-easy_from_to!(BlockProcessingError, BlockProductionError);
+easy_from_to!(ShardBlockProcessingError, BlockProductionError);
 easy_from_to!(ShardStateError, BlockProductionError);
 easy_from_to!(BeaconStateError, BlockProductionError);
 easy_from_to!(BeaconStateError, ShardChainError);
