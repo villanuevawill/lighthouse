@@ -418,7 +418,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let head_block_root = self.head().beacon_block_root;
         let head_block_slot = self.head().beacon_block.slot;
 
-        self.produce_attestation_data_for_block(shard, head_block_root, head_block_slot, &*state)
+        self.produce_attestation_data_for_block(shard, head_block_root, head_block_slot, Hash256::zero(), &*state)
     }
 
     /// Produce an `AttestationData` that attests to the chain denoted by `block_root` and `state`.
@@ -430,6 +430,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         shard: u64,
         head_block_root: Hash256,
         head_block_slot: Slot,
+        crosslink_data_root: Hash256,
         state: &BeaconState<T::EthSpec>,
     ) -> Result<AttestationData, Error> {
         // Collect some metrics.
@@ -478,7 +479,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             target_root,
             shard,
             previous_crosslink_root,
-            crosslink_data_root: Hash256::zero(),
+            crosslink_data_root,
         })
     }
 
