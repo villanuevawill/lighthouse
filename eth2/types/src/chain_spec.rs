@@ -260,7 +260,8 @@ impl ChainSpec {
             target_period_committee_size: 4,
             max_epochs_per_crosslink: 4,
             shard_slots_per_epoch: 16,
-            phase_1_fork_slot: 96,
+            shard_slots_per_beacon_slot: 2,
+            phase_1_fork_slot: 192,
             phase_1_fork_epoch: 12,
             network_id: 2, // lighthouse testnet network id
             boot_nodes,

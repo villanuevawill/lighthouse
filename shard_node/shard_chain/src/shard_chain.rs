@@ -77,8 +77,10 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         let genesis_block = genesis_block_header.block();
 
         let state_root = genesis_state.canonical_root();
+
         store.put(&state_root, &genesis_state)?;
         store.put(&spec.zero_hash, &genesis_state)?;
+        store.put(&genesis_block_header.state_root, &genesis_state)?;
 
         let genesis_block_root = genesis_block_header.canonical_root();
         store.put(&genesis_block_root, &genesis_block)?;
@@ -461,7 +463,6 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         self.store.put(&block_root, &block)?;
         self.store.put(&state_root, &state)?;
 
-        // Register the new block with the fork choice service.
         self.fork_choice
             .process_block(&beacon_state, &block, block_root)?;
 
@@ -523,15 +524,16 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
             beacon_block_root,
             parent_root,
             state_root: Hash256::zero(),
-            attestation: vec![self.op_pool.get_attestation(
+            attestation: self.op_pool.get_attestation(
                 &state,
                 &self.parent_beacon.current_state(),
                 spec,
-            )],
+            ),
             signature: Signature::empty_signature(),
         };
 
         per_shard_block_processing(&beacon_state, &mut state, &block, spec);
+
         let state_root = state.canonical_root();
         block.state_root = state_root;
 

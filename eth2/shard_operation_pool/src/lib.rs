@@ -69,7 +69,7 @@ impl<T: ShardSpec> OperationPool<T> {
         state: &ShardState<T>,
         beacon_state: &BeaconState<U>,
         spec: &ChainSpec,
-    ) -> ShardAttestation {
+    ) -> Vec<ShardAttestation> {
         let attesting_slot = ShardSlot::from(state.slot - 1);
         let epoch = attesting_slot.epoch(spec.slots_per_epoch, spec.shard_slots_per_beacon_slot);
         let domain_bytes =
@@ -88,7 +88,13 @@ impl<T: ShardSpec> OperationPool<T> {
                 .num_set_bits()
                 .cmp(&a.aggregation_bitfield.num_set_bits())
         });
-        (&attestations[0]).clone()
+
+        let mut attestation = vec![];
+        if !attestations.is_empty() {
+            attestation.push((&attestations[0]).clone());
+        }
+
+        attestation
     }
 
     pub fn prune_attestations(&self, finalized_state: &ShardState<T>) {
