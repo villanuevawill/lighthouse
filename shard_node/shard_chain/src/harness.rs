@@ -96,7 +96,9 @@ where
         let beacon_state_builder =
             TestingBeaconStateBuilder::from_default_keypairs_file_if_exists(validator_count, &beacon_spec);
         let (beacon_genesis_state, keypairs) = beacon_state_builder.build();
-        let shard_state = ShardState::genesis(&shard_spec, 0);
+
+        let mut shard_state = ShardState::genesis(&shard_spec, 0);
+        shard_state.latest_block_header.state_root = shard_state.canonical_root();
 
         let mut beacon_genesis_block = BeaconBlock::empty(&beacon_spec);
         beacon_genesis_block.state_root = Hash256::from_slice(&beacon_genesis_state.tree_hash_root());

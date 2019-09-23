@@ -284,7 +284,8 @@ impl ChainSpec {
             boot_nodes,
             slots_per_epoch: 8,
             shard_slots_per_epoch: 16,
-            phase_1_fork_slot: 96,
+            shard_slots_per_beacon_slot: 2,
+            phase_1_fork_slot: 192,
             phase_1_fork_epoch: 12,
             ..ChainSpec::mainnet()
         }

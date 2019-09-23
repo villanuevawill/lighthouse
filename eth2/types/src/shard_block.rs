@@ -22,10 +22,10 @@ use tree_hash_derive::{CachedTreeHash, SignedRoot, TreeHash};
     SignedRoot,
 )]
 pub struct ShardBlock {
-    pub shard: u64,
     pub slot: ShardSlot,
-    pub beacon_block_root: Hash256,
+    pub shard: u64,
     pub parent_root: Hash256,
+    pub beacon_block_root: Hash256,
     pub state_root: Hash256,
     // add body
     pub attestation: Vec<ShardAttestation>,

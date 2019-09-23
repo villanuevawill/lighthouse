@@ -23,6 +23,6 @@ pub fn process_shard_block_header<T: EthSpec, U: ShardSpec>(
     block: &ShardBlock,
     spec: &ChainSpec,
 ) -> Result<(), Error> {
-    state.latest_block_header = block.block_header();
+    state.latest_block_header = block.temporary_block_header(spec);
     Ok(())
 }
