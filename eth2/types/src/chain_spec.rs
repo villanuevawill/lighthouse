@@ -88,6 +88,10 @@ pub struct ChainSpec {
     pub period_committee_root_length: u64,
     pub phase_1_fork_epoch: u64,
     pub phase_1_fork_slot: u64,
+    pub target_persistent_committee_size: u64,
+    pub shard_header_size: u64,
+    pub shard_block_size_target: u64,
+    pub shard_block_size_limit: u64,
 
     /*
      * Reward and penalty quotients
