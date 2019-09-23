@@ -81,6 +81,32 @@ pub fn process_shard_attestations<T: ShardSpec, U: EthSpec>(
     for (i, validator_idx) in shard_committee.iter().enumerate() {
         verify_block_signature(&state, &beacon_state, ) 
     }
+}
 
-    
+pub fn process_shard_block_data_fees<T: ShardSpec, U: EthSpec>(
+    state: &mut ShardState<T>,
+    beacon_state: &BeaconState<U>,
+    block: &ShardBlock,
+    spec: &ChainSpec,
+) -> Result<(), Error> {
+    let base_reward = get_shard_base_reward(beacon_state);
+
+    add_fee(state, beacon_state, proposer_index);
+
+    // NOTE: incorrect spec value
+    let quotient = spec.base_reward_quotient;
+
+    if block.body.len < spec.shard_block_size {
+        state.basefee += Gwei(cmp::max(1, state.basefee * block.body.len - spec.shard_block_size_target) / quotient)
+    } else {
+        state.basefee -= Gwei(cmp::min((1, spec.effective_balance_increment 
+                    / spec.epochs_per_shard_period 
+                    / spec.shard_slots_per_epoch)
+                )
+            );
+    };
+
+    state.basefee = Gwei();
+
+    Ok(())
 }
