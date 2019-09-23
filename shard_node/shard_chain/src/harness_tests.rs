@@ -17,40 +17,32 @@ pub type TestShardForkChoice = ShardThreadSafeReducedTree<ShardMemoryStore, Mini
 fn get_harness(validator_count: usize) -> ShardChainHarness<TestBeaconForkChoice, MinimalEthSpec, TestShardForkChoice, MinimalShardSpec> {
     let harness = ShardChainHarness::new(validator_count);
 
-    // Move past the zero slot.
+    // Move past the zero slot
     harness.advance_beacon_slot();
+    harness.advance_shard_slot();
 
     harness
 }
 
+
 #[test]
-fn finalizes_with_full_participation() {
-    let num_blocks_produced = MinimalEthSpec::slots_per_epoch() * 5;
+fn advance_shard_slot() {
     let harness = get_harness(VALIDATOR_COUNT);
+    let num_blocks_produced = MinimalEthSpec::slots_per_epoch() *  harness.beacon_spec.phase_1_fork_epoch;
 
-    harness.extend_beacon_chain(
-        num_blocks_produced as usize,
-    );
+    harness.extend_beacon_chain((num_blocks_produced + 1) as usize);
 
-    let state = &harness.beacon_chain.head().beacon_state;
+    let beacon_slot = harness.beacon_chain.current_state().slot;
+    let shard_slot = harness.shard_chain.current_state().slot;
 
-    assert_eq!(
-        state.slot, num_blocks_produced,
-        "head should be at the current slot"
-    );
-    assert_eq!(
-        state.current_epoch(),
-        num_blocks_produced / MinimalEthSpec::slots_per_epoch(),
-        "head should be at the expected epoch"
-    );
-    assert_eq!(
-        state.current_justified_epoch,
-        state.current_epoch() - 1,
-        "the head should be justified one behind the current epoch"
-    );
-    assert_eq!(
-        state.finalized_epoch,
-        state.current_epoch() - 2,
-        "the head should be finalized two behind the current epoch"
-    );
+    harness.extend_shard_chain(1);
+
+    for i in 0..30 {
+        harness.advance_beacon_slot();
+        harness.advance_shard_slot();
+        harness.extend_beacon_chain(1);
+        harness.extend_shard_chain(1);
+        harness.advance_shard_slot();
+        harness.extend_shard_chain(1);
+    }
 }
