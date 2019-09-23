@@ -2,7 +2,7 @@ use crate::{ShardChain, ShardChainError, ShardChainTypes};
 use beacon_chain::BeaconChainTypes;
 use shard_lmd_ghost::LmdGhost;
 use shard_store::{Error as StoreError, Store};
-use state_processing::common::get_shard_attesting_indices_unsorted;
+use state_processing::common::get_shard_attesting_indices;
 use std::sync::Arc;
 use store::{Error as BeaconStoreError, Store as BeaconStore};
 use types::{
@@ -26,6 +26,7 @@ pub enum Error {
 }
 
 pub struct ForkChoice<T: ShardChainTypes> {
+    store: Arc<T::Store>,
     backend: T::LmdGhost,
     genesis_block_root: Hash256,
 }
@@ -37,6 +38,7 @@ impl<T: ShardChainTypes> ForkChoice<T> {
         genesis_block_root: Hash256,
     ) -> Self {
         Self {
+            store: store.clone(),
             backend: T::LmdGhost::new(store, genesis_block, genesis_block_root),
             genesis_block_root,
         }
@@ -45,13 +47,10 @@ impl<T: ShardChainTypes> ForkChoice<T> {
     pub fn find_head<L: BeaconChainTypes>(&self, chain: &ShardChain<T, L>) -> Result<Hash256> {
         let beacon_state = chain.parent_beacon.current_state();
         let current_crosslink = beacon_state.get_current_crosslink(chain.shard)?;
-        // Spec needs an update for crosslinks to hold the end shard_block_root
-        // For now, we will just assume the latest block hash is included and add the
-        // extra field to the beacon chain
+
         let start_block_root = current_crosslink.crosslink_data_root;
-        // should be updated to end epoch :) with the new spec todo
         let start_block_slot =
-            ShardSlot::from(current_crosslink.epoch.as_u64() * chain.spec.shard_slots_per_epoch);
+            ShardSlot::from(current_crosslink.end_epoch.as_u64() * chain.spec.shard_slots_per_epoch);
 
         // Resolve the `0x00.. 00` alias back to genesis
         let start_block_root = if start_block_root == Hash256::zero() {
@@ -63,7 +62,7 @@ impl<T: ShardChainTypes> ForkChoice<T> {
         // A function that returns the weight for some validator index.
         let weight = |validator_index: usize| -> Option<u64> {
             beacon_state
-                .validator_registry
+                .validators
                 .get(validator_index)
                 .map(|v| v.effective_balance)
         };
@@ -83,8 +82,14 @@ impl<T: ShardChainTypes> ForkChoice<T> {
         block: &ShardBlock,
         block_root: Hash256,
     ) -> Result<()> {
-        if !&block.attestation.is_empty() {
-            self.process_attestation_from_block(beacon_state, &block.attestation[0], block)?;
+        let attestation = &block.attestation;
+        if attestation.is_empty() {
+            if let Some(block) = self
+                .store
+                .get::<ShardBlock>(&attestation.data.shard_block_root)?
+            {
+                self.process_attestation(beacon_state, attestation, &block)?;
+            }
         }
 
         self.backend.process_block(block, block_root)?;
@@ -92,21 +97,20 @@ impl<T: ShardChainTypes> ForkChoice<T> {
         Ok(())
     }
 
-    fn process_attestation_from_block<P: EthSpec>(
+    fn process_attestation<P: EthSpec>(
         &self,
         beacon_state: &BeaconState<P>,
         attestation: &ShardAttestation,
         block: &ShardBlock,
     ) -> Result<()> {
-        // Note: `get_attesting_indices_unsorted` requires that the beacon state caches be built.
-        let validator_indices = get_shard_attesting_indices_unsorted(
+        let block_hash = attestation.data.shard_block_root;
+
+        let validator_indices = get_shard_attesting_indices(
             block.shard,
             beacon_state,
             &attestation.data,
             &attestation.aggregation_bitfield,
         )?;
-
-        let block_hash = attestation.data.shard_block_root;
 
         if block_hash != Hash256::zero() {
             for validator_index in validator_indices {
