@@ -122,6 +122,21 @@ impl<T: ShardChainTypes> ForkChoice<T> {
         Ok(())
     }
 
+    /// Returns the latest message for a given validator, if any.
+    ///
+    /// Returns `(block_root, block_slot)`.
+    pub fn latest_message(&self, validator_index: usize) -> Option<(Hash256, ShardSlot)> {
+        self.backend.latest_message(validator_index)
+    }
+
+    /// Runs an integrity verification function on the underlying fork choice algorithm.
+    ///
+    /// Returns `Ok(())` if the underlying fork choice has maintained it's integrity,
+    /// `Err(description)` otherwise.
+    pub fn verify_integrity(&self) -> core::result::Result<(), String> {
+        self.backend.verify_integrity()
+    }
+
     /// Inform the fork choice that the given block (and corresponding root) have been finalized so
     /// it may prune it's storage.
     ///
