@@ -1,7 +1,7 @@
 use crate::*;
 use serde_derive::{Deserialize, Serialize};
 use ssz_types::typenum::{
-    Unsigned, U0, U1, U1024, U1099511627776, U128, U16, U16777216, U4, U4096, U64, U65536, U8,
+    Unsigned, U0, U1, U1024, U1099511627776, U256, U128, U16, U16777216, U4, U4096, U64, U65536, U8,
     U8192,
 };
 use std::fmt::Debug;
@@ -32,6 +32,7 @@ pub trait EthSpec: 'static + Default + Sync + Send + Clone + Debug + PartialEq {
     type EpochsPerHistoricalVector: Unsigned + Clone + Sync + Send + Debug + PartialEq;
     type EpochsPerSlashingsVector: Unsigned + Clone + Sync + Send + Debug + PartialEq;
     type HistoricalRootsLimit: Unsigned + Clone + Sync + Send + Debug + PartialEq;
+    type PeriodCommitteeRootsLength: Unsigned + Clone + Sync + Send + Debug + PartialEq;
     type ValidatorRegistryLimit: Unsigned + Clone + Sync + Send + Debug + PartialEq;
     /*
      * Max operations per block
@@ -147,6 +148,7 @@ impl EthSpec for MainnetEthSpec {
     type JustificationBitsLength = U4;
     type ShardCount = U1024;
     type MaxValidatorsPerCommittee = U4096;
+    type PeriodCommitteeRootsLength = U256;
     type GenesisEpoch = U0;
     type SlotsPerEpoch = U64;
     type SlotsPerEth1VotingPeriod = U1024;
@@ -180,6 +182,7 @@ pub struct MinimalEthSpec;
 
 impl EthSpec for MinimalEthSpec {
     type ShardCount = U8;
+    type PeriodCommitteeRootsLength = U64;
     type SlotsPerEpoch = U8;
     type SlotsPerEth1VotingPeriod = U16;
     type SlotsPerHistoricalRoot = U64;

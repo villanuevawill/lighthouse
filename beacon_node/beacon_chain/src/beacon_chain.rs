@@ -537,6 +537,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             shard,
             head.beacon_block_root,
             head.beacon_block.slot,
+            Hash256::zero(),
             &state,
         )
     }
@@ -550,6 +551,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         shard: u64,
         head_block_root: Hash256,
         head_block_slot: Slot,
+        crosslink_data_root: Hash256,
         state: &BeaconState<T::EthSpec>,
     ) -> Result<AttestationData, Error> {
         // Collect some metrics.
@@ -597,7 +599,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 target.epoch,
                 parent_crosslink.end_epoch + self.spec.max_epochs_per_crosslink,
             ),
-            data_root: Hash256::zero(),
+            data_root: crosslink_data_root,
         };
 
         // Collect some metrics.

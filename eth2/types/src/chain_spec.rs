@@ -8,8 +8,10 @@ use utils::{u8_from_hex_str, u8_to_hex_str};
 /// Spec v0.8.1
 pub enum Domain {
     BeaconProposer,
+    ShardProposer,
     Randao,
     Attestation,
+    ShardAttestation,
     Deposit,
     VoluntaryExit,
     Transfer,
@@ -34,6 +36,8 @@ pub struct ChainSpec {
      * Misc
      */
     pub target_committee_size: usize,
+    pub target_period_committee_size: usize,
+    pub max_indices_per_attestation: u64,
     pub min_per_epoch_churn_limit: u64,
     pub churn_limit_quotient: u64,
     pub shuffle_round_count: u8,
@@ -59,6 +63,9 @@ pub struct ChainSpec {
      * Time parameters
      */
     pub milliseconds_per_slot: u64,
+    pub genesis_time: u64,
+    pub seconds_per_slot: u64,
+    pub shard_seconds_per_slot: u64,
     pub min_attestation_inclusion_delay: u64,
     pub min_seed_lookahead: Epoch,
     pub activation_exit_delay: u64,
@@ -66,6 +73,21 @@ pub struct ChainSpec {
     pub persistent_committee_period: u64,
     pub max_epochs_per_crosslink: u64,
     pub min_epochs_to_inactivity_penalty: u64,
+
+    /*
+     * Additional Time Parameters
+     */
+    pub slots_per_epoch: u64,
+    pub shard_slots_per_beacon_slot: u64,
+    pub shard_slots_per_epoch: u64,
+
+    /*
+     * Phase 1 specific values, fork epoch and slot are hardcoded to values for now
+     */
+    pub epochs_per_shard_period: u64,
+    pub period_committee_root_length: u64,
+    pub phase_1_fork_epoch: u64,
+    pub phase_1_fork_slot: u64,
 
     /*
      * Reward and penalty quotients
@@ -85,8 +107,10 @@ pub struct ChainSpec {
      * Use `ChainSpec::get_domain(..)` to access these values.
      */
     domain_beacon_proposer: u32,
+    domain_shard_proposer: u32,
     domain_randao: u32,
     domain_attestation: u32,
+    domain_shard_attestation: u32,
     domain_deposit: u32,
     domain_voluntary_exit: u32,
     domain_transfer: u32,
@@ -102,8 +126,10 @@ impl ChainSpec {
     pub fn get_domain(&self, epoch: Epoch, domain: Domain, fork: &Fork) -> u64 {
         let domain_constant = match domain {
             Domain::BeaconProposer => self.domain_beacon_proposer,
+            Domain::ShardProposer => self.domain_beacon_proposer,
             Domain::Randao => self.domain_randao,
             Domain::Attestation => self.domain_attestation,
+            Domain::ShardAttestation => self.domain_shard_attestation,
             Domain::Deposit => self.domain_deposit,
             Domain::VoluntaryExit => self.domain_voluntary_exit,
             Domain::Transfer => self.domain_transfer,
@@ -135,6 +161,9 @@ impl ChainSpec {
              * Misc
              */
             target_committee_size: 128,
+            target_period_committee_size: 128,
+            period_committee_root_length: 256,
+            max_indices_per_attestation: 4096,
             min_per_epoch_churn_limit: 4,
             churn_limit_quotient: 65_536,
             shuffle_round_count: 90,
@@ -160,12 +189,29 @@ impl ChainSpec {
              */
             milliseconds_per_slot: 6_000,
             min_attestation_inclusion_delay: 1,
+            genesis_time: u64::from(u32::max_value()),
+            seconds_per_slot: 6,
+            shard_seconds_per_slot: 3,
             min_seed_lookahead: Epoch::new(1),
             activation_exit_delay: 4,
             min_validator_withdrawability_delay: Epoch::new(256),
             persistent_committee_period: 2_048,
             max_epochs_per_crosslink: 64,
             min_epochs_to_inactivity_penalty: 4,
+
+            /*
+             * Additional Time Parameters
+             */
+            slots_per_epoch: 64,
+            shard_slots_per_beacon_slot: 2,
+            shard_slots_per_epoch: 128,
+
+            /*
+             * Phase 1 specific values, fork epoch and slot are hardcoded to values for now
+             */
+            epochs_per_shard_period: 256,
+            phase_1_fork_epoch: 600,
+            phase_1_fork_slot: 38_400,
 
             /*
              * Reward and penalty quotients
@@ -180,11 +226,13 @@ impl ChainSpec {
              * Signature domains
              */
             domain_beacon_proposer: 0,
-            domain_randao: 1,
-            domain_attestation: 2,
-            domain_deposit: 3,
-            domain_voluntary_exit: 4,
-            domain_transfer: 5,
+            domain_shard_proposer: 1,
+            domain_randao: 2,
+            domain_attestation: 3,
+            domain_shard_attestation: 4,
+            domain_deposit: 5,
+            domain_voluntary_exit: 6,
+            domain_transfer: 7,
 
             /*
              * Network specific
@@ -205,9 +253,16 @@ impl ChainSpec {
 
         Self {
             target_committee_size: 4,
+            target_period_committee_size: 4,
+            epochs_per_shard_period: 4,
             shuffle_round_count: 10,
             min_genesis_active_validator_count: 64,
+            target_period_committee_size: 4,
             max_epochs_per_crosslink: 4,
+            shard_slots_per_epoch: 16,
+            shard_slots_per_beacon_slot: 2,
+            phase_1_fork_slot: 192,
+            phase_1_fork_epoch: 12,
             network_id: 2, // lighthouse testnet network id
             boot_nodes,
             ..ChainSpec::mainnet()
@@ -224,8 +279,6 @@ impl ChainSpec {
             milliseconds_per_slot: 12_000,
             target_committee_size: 4,
             shuffle_round_count: 10,
-            network_id: 13,
-            boot_nodes,
             ..ChainSpec::mainnet()
         }
     }

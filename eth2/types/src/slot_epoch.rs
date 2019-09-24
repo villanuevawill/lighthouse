@@ -10,7 +10,8 @@
 //! implement `Into<u64>`, however this would allow operations between `Slots` and `Epochs` which
 //! may lead to programming errors which are not detected by the compiler.
 
-use crate::slot_height::SlotHeight;
+use crate::period::Period;
+use crate::slot_height::{ShardSlotHeight, SlotHeight};
 use crate::test_utils::TestRandom;
 use rand::RngCore;
 use serde_derive::{Deserialize, Serialize};
@@ -27,10 +28,33 @@ use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Rem, Sub, SubAssi
 pub struct Slot(u64);
 
 #[derive(Eq, Debug, Clone, Copy, Default, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct ShardSlot(u64);
+
+#[derive(Eq, Debug, Clone, Copy, Default, Serialize, Deserialize)]
 pub struct Epoch(u64);
 
 impl_common!(Slot);
+impl_common!(ShardSlot);
 impl_common!(Epoch);
+
+impl ShardSlot {
+    pub fn new(slot: u64) -> ShardSlot {
+        ShardSlot(slot)
+    }
+
+    pub fn epoch(self, slots_per_epoch: u64, slots_per_beacon_slot: u64) -> Epoch {
+        Epoch::from(self.0 / slots_per_epoch / slots_per_beacon_slot)
+    }
+
+    pub fn height(self, genesis_slot: Slot) -> ShardSlotHeight {
+        ShardSlotHeight::from(self.0.saturating_sub(genesis_slot.as_u64()))
+    }
+
+    pub fn max_value() -> Slot {
+        Slot(u64::max_value())
+    }
+}
 
 impl Slot {
     pub fn new(slot: u64) -> Slot {
@@ -45,6 +69,10 @@ impl Slot {
         SlotHeight::from(self.0.saturating_sub(genesis_slot.as_u64()))
     }
 
+    pub fn shard_slot(self, slots_per_epoch: u64, shard_slots_per_epoch: u64) -> ShardSlot {
+        ShardSlot::from(self.0 * shard_slots_per_epoch / slots_per_epoch)
+    }
+
     pub fn max_value() -> Slot {
         Slot(u64::max_value())
     }
@@ -53,6 +81,10 @@ impl Slot {
 impl Epoch {
     pub fn new(slot: u64) -> Epoch {
         Epoch(slot)
+    }
+
+    pub fn period(self, epochs_per_period: u64) -> Period {
+        Period::from(self.0 / epochs_per_period)
     }
 
     pub fn max_value() -> Epoch {

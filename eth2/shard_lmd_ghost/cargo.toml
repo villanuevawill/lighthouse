@@ -1,0 +1,20 @@
+[package]
+name = "shard_lmd_ghost"
+version = "0.1.0"
+authors = ["Age Manning <Age@AgeManning.com>", "Paul Hauner <paul@sigmaprime.io>"]
+edition = "2018"
+
+[dependencies]
+parking_lot = "0.7"
+shard_store = { path = "../../shard_node/shard_store" }
+types = { path = "../types" }
+
+[dev-dependencies]
+criterion = "0.2"
+hex = "0.3.2"
+yaml-rust = "0.4.2"
+bls = { path = "../utils/bls" }
+slot_clock = { path = "../utils/slot_clock" }
+env_logger = "0.6.0"
+lazy_static = "1.3.0"
+rand = "0.7"

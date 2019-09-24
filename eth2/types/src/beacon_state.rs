@@ -15,16 +15,19 @@ use tree_hash::TreeHash;
 use tree_hash_derive::TreeHash;
 
 pub use self::committee_cache::CommitteeCache;
+pub use self::period_committee_cache::PeriodCommitteeCache;
 pub use beacon_state_types::*;
 
 #[macro_use]
 mod beacon_state_types;
 mod committee_cache;
 mod exit_cache;
+mod period_committee_cache;
 mod pubkey_cache;
 mod tests;
 
 pub const CACHED_EPOCHS: usize = 3;
+pub const CACHED_PERIODS: usize = 3;
 const MAX_RANDOM_BYTE: u64 = (1 << 8) - 1;
 
 #[derive(Debug, PartialEq)]
@@ -32,6 +35,8 @@ pub enum Error {
     EpochOutOfBounds,
     SlotOutOfBounds,
     ShardOutOfBounds,
+    PeriodOutOfBounds,
+    NoPeriodBoundary,
     UnknownValidator,
     UnableToDetermineProducer,
     InvalidBitfield,
@@ -114,6 +119,10 @@ where
     pub eth1_data_votes: VariableList<Eth1Data, T::SlotsPerEth1VotingPeriod>,
     pub eth1_deposit_index: u64,
 
+
+    // Committee roots
+    pub period_committee_roots: FixedLenVec<Hash256, T::PeriodCommitteeRootsLength>,
+
     // Registry
     #[compare_fields(as_slice)]
     pub validators: VariableList<Validator, T::ValidatorRegistryLimit>,
@@ -153,6 +162,21 @@ where
     #[tree_hash(skip_hashing)]
     #[test_random(default)]
     pub committee_caches: [CommitteeCache; CACHED_EPOCHS],
+
+    #[serde(default)]
+    #[ssz(skip_serializing)]
+    #[ssz(skip_deserializing)]
+    #[tree_hash(skip_hashing)]
+    #[test_random(default)]
+    pub period_caches: [PeriodCommitteeCache; CACHED_PERIODS],
+
+    #[serde(default)]
+    #[ssz(skip_serializing)]
+    #[ssz(skip_deserializing)]
+    #[tree_hash(skip_hashing)]
+    #[test_random(default)]
+    pub pubkey_cache: PubkeyCache,
+
     #[serde(skip_serializing, skip_deserializing)]
     #[ssz(skip_serializing)]
     #[ssz(skip_deserializing)]
@@ -212,6 +236,13 @@ impl<T: EthSpec> BeaconState<T> {
             previous_crosslinks: FixedVector::from_elem(Crosslink::default()),
             current_crosslinks: FixedVector::from_elem(Crosslink::default()),
 
+            // Committees
+            period_committee_roots: FixedLenVec::from(vec![
+                spec.zero_hash;
+                T::PeriodCommitteeRootsLength::to_usize(
+                )
+            ]),
+
             // Finality
             justification_bits: BitVector::new(),
             previous_justified_checkpoint: Checkpoint::default(),
@@ -223,6 +254,11 @@ impl<T: EthSpec> BeaconState<T> {
                 CommitteeCache::default(),
                 CommitteeCache::default(),
                 CommitteeCache::default(),
+            ],
+            period_caches: [
+                PeriodCommitteeCache::default(),
+                PeriodCommitteeCache::default(),
+                PeriodCommitteeCache::default(),
             ],
             pubkey_cache: PubkeyCache::default(),
             exit_cache: ExitCache::default(),
@@ -386,6 +422,101 @@ impl<T: EthSpec> BeaconState<T> {
             .ok_or_else(|| Error::NoCommitteeForShard)?;
 
         Ok(committee)
+    }
+
+    pub fn period_index(&self, relative_period: RelativePeriod) -> usize {
+        match relative_period {
+            RelativePeriod::Previous => 0,
+            RelativePeriod::Current => 1,
+            RelativePeriod::Next => 2,
+        }
+    }
+
+    pub fn get_period_committee(
+        &self,
+        relative_period: RelativePeriod,
+        shard: u64,
+    ) -> Result<&PeriodCommittee, Error> {
+        self.period_caches[self.period_index(relative_period)].get_period_committee(shard)
+    }
+
+    pub fn get_shard_committee(&self, epoch: Epoch, shard: u64) -> Result<ShardCommittee, Error> {
+        let spec = T::default_spec();
+        let current_epoch = self.current_epoch();
+        let current_period = current_epoch.period(spec.epochs_per_shard_period);
+        let target_period = epoch.period(spec.epochs_per_shard_period);
+
+        if target_period != current_period {
+            return Err(BeaconStateError::PeriodOutOfBounds);
+        }
+
+        let earlier_committee = &self
+            .get_period_committee(RelativePeriod::Previous, shard)?
+            .committee;
+        let later_committee = &self
+            .get_period_committee(RelativePeriod::Current, shard)?
+            .committee;
+
+        let mut union = Vec::new();
+
+        for &member in earlier_committee {
+            if member as u64 % spec.epochs_per_shard_period
+                < member as u64 % spec.epochs_per_shard_period
+            {
+                union.push(member);
+            }
+        }
+
+        for &member in later_committee {
+            if member as u64 % spec.epochs_per_shard_period
+                >= member as u64 % spec.epochs_per_shard_period
+            {
+                union.push(member);
+            }
+        }
+
+        union.dedup();
+
+        Ok(ShardCommittee {
+            epoch: epoch,
+            shard: shard,
+            committee: union,
+        })
+    }
+
+    pub fn get_shard_proposer_index(&self, shard: u64, slot: ShardSlot) -> Result<usize, Error> {
+        let spec = T::default_spec();
+        let current_epoch = self.current_epoch();
+        let target_epoch = slot.epoch(spec.slots_per_epoch, spec.shard_slots_per_beacon_slot);
+        let current_period = current_epoch.period(spec.epochs_per_shard_period);
+        let target_period = target_epoch.period(spec.epochs_per_shard_period);
+
+        if target_period != current_period {
+            return Err(BeaconStateError::PeriodOutOfBounds);
+        }
+
+        let seed = self.generate_seed(target_epoch, &spec)?;
+        let committee = self.get_shard_committee(target_epoch, shard)?.committee;
+
+        let mut i = 0;
+        Ok(loop {
+            let candidate_index = committee[(slot.as_usize() + i) % committee.len()];
+            let random_byte = {
+                let mut preimage = seed.as_bytes().to_vec();
+                preimage.append(&mut int_to_bytes8((i / 32) as u64));
+                preimage.append(&mut int_to_bytes8(shard));
+                preimage.append(&mut int_to_bytes8(slot.into()));
+                let hash = hash(&preimage);
+                hash[i % 32]
+            };
+            let effective_balance = self.validator_registry[candidate_index].effective_balance;
+            if (effective_balance * MAX_RANDOM_BYTE)
+                >= (spec.max_effective_balance * u64::from(random_byte))
+            {
+                break candidate_index;
+            }
+            i += 1;
+        })
     }
 
     /// Returns the beacon proposer index for the `slot` in the given `relative_epoch`.
@@ -818,6 +949,13 @@ impl<T: EthSpec> BeaconState<T> {
             self.get_effective_balance(*i, spec)
                 .and_then(|bal| Ok(bal + acc))
         })
+    }
+
+    pub fn advance_period_cache(&mut self, spec: &ChainSpec) -> Result<(), Error> {
+        let next_committee = PeriodCommitteeCache::initialize(self, spec)?;
+        self.period_caches.rotate_left(1);
+        self.period_caches[self.period_index(RelativePeriod::Next)] = next_committee;
+        Ok(())
     }
 
     /// Build all the caches, if they need to be built.

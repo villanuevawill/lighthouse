@@ -1,7 +1,9 @@
 [workspace]
 members = [
 	"eth2/lmd_ghost",
+	"eth2/shard_lmd_ghost",
 	"eth2/operation_pool",
+	"eth2/shard_operation_pool",
 	"eth2/state_processing",
 	"eth2/types",
 	"eth2/utils/bls",
@@ -34,6 +36,8 @@ members = [
 	"beacon_node/version",
 	"beacon_node/beacon_chain",
 	"beacon_node/websocket_server",
+	"shard_node/shard_store",
+	"shard_node/shard_chain",
 	"tests/ef_tests",
 	"lcli",
 	"protos",
