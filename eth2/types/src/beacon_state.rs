@@ -121,7 +121,7 @@ where
 
 
     // Committee roots
-    pub period_committee_roots: FixedLenVec<Hash256, T::PeriodCommitteeRootsLength>,
+    pub period_committee_roots: FixedVector<Hash256, T::PeriodCommitteeRootsLength>,
 
     // Registry
     #[compare_fields(as_slice)]
@@ -183,6 +183,7 @@ where
     #[tree_hash(skip_hashing)]
     #[test_random(default)]
     pub pubkey_cache: PubkeyCache,
+
     #[serde(skip_serializing, skip_deserializing)]
     #[ssz(skip_serializing)]
     #[ssz(skip_deserializing)]
@@ -237,11 +238,7 @@ impl<T: EthSpec> BeaconState<T> {
             current_crosslinks: FixedVector::from_elem(Crosslink::default()),
 
             // Committees
-            period_committee_roots: FixedLenVec::from(vec![
-                spec.zero_hash;
-                T::PeriodCommitteeRootsLength::to_usize(
-                )
-            ]),
+            period_committee_roots: FixedVector::from_elem(Hash256::zero()),
 
             // Finality
             justification_bits: BitVector::new(),

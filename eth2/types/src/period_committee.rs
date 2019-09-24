@@ -1,7 +1,7 @@
 use crate::*;
 use serde_derive::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
-use tree_hash_derive::{CachedTreeHash, TreeHash};
+use tree_hash_derive::TreeHash;
 
 #[derive(
     Default,
@@ -9,7 +9,6 @@ use tree_hash_derive::{CachedTreeHash, TreeHash};
     Debug,
     PartialEq,
     TreeHash,
-    CachedTreeHash,
     Serialize,
     Deserialize,
     Decode,

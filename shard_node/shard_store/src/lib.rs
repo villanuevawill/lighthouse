@@ -7,7 +7,6 @@
 //!
 //! Provides a simple API for storing/retrieving all types that sometimes needs type-hints. See
 //! tests for implementation examples.
-
 mod block_at_slot;
 mod errors;
 mod impls;

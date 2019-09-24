@@ -1,16 +1,13 @@
 use crate::test_utils::TestRandom;
 use crate::*;
-use cached_tree_hash::{Error as TreeHashCacheError, TreeHashCache};
 use compare_fields_derive::CompareFields;
-use fixed_len_vec::FixedLenVec;
-use hashing::hash;
 use serde_derive::{Deserialize, Serialize};
-use ssz::ssz_encode;
+use ssz_types::FixedVector;
 use ssz_derive::{Decode, Encode};
 use std::marker::PhantomData;
 use test_random_derive::TestRandom;
 use tree_hash::TreeHash;
-use tree_hash_derive::{CachedTreeHash, TreeHash};
+use tree_hash_derive::TreeHash;
 
 pub use shard_state_types::*;
 
@@ -18,7 +15,7 @@ mod shard_state_types;
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
-    TreeHashCacheError(TreeHashCacheError),
+    SszTypesError(ssz_types::Error),
 }
 
 #[derive(
@@ -40,7 +37,7 @@ where
 {
     pub shard: u64,
     pub slot: ShardSlot,
-    pub history_accumulator: FixedLenVec<Hash256, T::HistoryAccumulatorDepth>,
+    pub history_accumulator: FixedVector<Hash256, T::HistoryAccumulatorDepth>,
     pub latest_block_header: ShardBlockHeader,
 
     #[serde(skip_serializing, skip_deserializing)]
@@ -102,8 +99,8 @@ impl<T: ShardSpec> ShardState<T> {
     }
 }
 
-impl From<TreeHashCacheError> for Error {
-    fn from(e: TreeHashCacheError) -> Error {
-        Error::TreeHashCacheError(e)
+impl From<ssz_types::Error> for Error {
+    fn from(e: ssz_types::Error) -> Error {
+        Error::SszTypesError(e)
     }
 }

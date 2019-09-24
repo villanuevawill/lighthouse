@@ -1,10 +1,10 @@
 use crate::test_utils::TestRandom;
-use crate::{Bitfield, ShardAttestationData};
+use crate::{BitList, ShardAttestationData};
 
 use serde_derive::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
 use test_random_derive::TestRandom;
-use tree_hash_derive::{CachedTreeHash, TreeHash};
+use tree_hash_derive::TreeHash;
 
 /// An attestation that has been included in the state but not yet fully processed.
 ///
@@ -18,11 +18,10 @@ use tree_hash_derive::{CachedTreeHash, TreeHash};
     Encode,
     Decode,
     TreeHash,
-    CachedTreeHash,
     TestRandom,
 )]
-pub struct ShardPendingAttestation {
-    pub aggregation_bitfield: Bitfield,
+pub struct ShardPendingAttestation<T: ShardSpec> {
+    pub aggregation_bitfield:  BitList<T::ShardCommitteeTargetSize>,
     pub data: ShardAttestationData,
     pub proposer_index: u64,
 }

@@ -1,10 +1,11 @@
 use crate::*;
-use fixed_len_vec::typenum::U64;
+use ssz_types::typenum::U64;
 use serde_derive::{Deserialize, Serialize};
 use std::fmt::Debug;
 
 pub trait ShardSpec: 'static + Default + Sync + Send + Clone + Debug + PartialEq {
     type HistoryAccumulatorDepth: Unsigned + Clone + Sync + Send + Debug + PartialEq;
+    type ShardCommitteeTargetSize: Unsigned + Clone + Sync + Send + Debug + PartialEq;
 
     fn default_spec() -> ChainSpec;
 
@@ -18,6 +19,7 @@ pub struct MainnetShardSpec;
 
 impl ShardSpec for MainnetShardSpec {
     type HistoryAccumulatorDepth = U64;
+    type ShardCommitteeTargetSize = U128
 
     fn default_spec() -> ChainSpec {
         ChainSpec::mainnet()
@@ -31,6 +33,7 @@ pub struct MinimalShardSpec;
 
 impl ShardSpec for MinimalShardSpec {
     type HistoryAccumulatorDepth = U64;
+    type ShardCommitteeTargetSize = U64;
 
     fn default_spec() -> ChainSpec {
         ChainSpec::minimal()

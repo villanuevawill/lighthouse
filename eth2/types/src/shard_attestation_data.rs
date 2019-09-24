@@ -5,26 +5,10 @@ use serde_derive::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
 use test_random_derive::TestRandom;
 use tree_hash::TreeHash;
-use tree_hash_derive::{CachedTreeHash, SignedRoot, TreeHash};
+use tree_hash_derive::TreeHash;
 
-/// The data upon which an attestation is based.
-///
-/// Spec v0.6.3
 #[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Default,
-    Serialize,
-    Deserialize,
-    Hash,
-    Encode,
-    Decode,
-    TreeHash,
-    CachedTreeHash,
-    TestRandom,
-    SignedRoot,
+    Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash, Encode, Decode, TreeHash, TestRandom
 )]
 pub struct ShardAttestationData {
     // LMD GHOST vote

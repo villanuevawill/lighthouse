@@ -2,11 +2,12 @@ use crate::test_utils::TestRandom;
 use crate::*;
 use bls::Signature;
 
+use ssz_types::typenum::U1
 use serde_derive::{Deserialize, Serialize};
 use ssz_derive::{Decode, Encode};
 use test_random_derive::TestRandom;
 use tree_hash::{SignedRoot, TreeHash};
-use tree_hash_derive::{CachedTreeHash, SignedRoot, TreeHash};
+use tree_hash_derive::{SignedRoot, TreeHash};
 
 #[derive(
     Debug,
@@ -17,7 +18,6 @@ use tree_hash_derive::{CachedTreeHash, SignedRoot, TreeHash};
     Encode,
     Decode,
     TreeHash,
-    CachedTreeHash,
     TestRandom,
     SignedRoot,
 )]
@@ -28,7 +28,7 @@ pub struct ShardBlockHeader {
     pub beacon_block_root: Hash256,
     pub state_root: Hash256,
     // need to add body
-    pub attestation: Vec<ShardAttestation>,
+    pub attestation: VariableList<ShardAttestation, U1>,
     #[signed_root(skip_hashing)]
     pub signature: Signature,
 }
@@ -41,7 +41,7 @@ impl ShardBlockHeader {
             beacon_block_root: spec.zero_hash,
             parent_root: spec.zero_hash,
             state_root: spec.zero_hash,
-            attestation: vec![],
+            attestation: VariableList::empty(),
             signature: Signature::empty_signature(),
         }
     }

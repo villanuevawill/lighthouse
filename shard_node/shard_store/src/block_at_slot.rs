@@ -11,7 +11,7 @@ fn read_slot_from_block_bytes(bytes: &[u8]) -> Result<ShardSlot, DecodeError> {
     ShardSlot::from_ssz_bytes(&bytes[0..end])
 }
 
-fn read_previous_block_root_from_block_bytes(bytes: &[u8]) -> Result<Hash256, DecodeError> {
+fn read_parent_root_from_block_bytes(bytes: &[u8]) -> Result<Hash256, DecodeError> {
     let previous_bytes = ShardSlot::ssz_fixed_len();
     let slice = bytes
         .get(previous_bytes..previous_bytes + Hash256::ssz_fixed_len())
@@ -45,7 +45,7 @@ fn get_at_preceeding_slot<T: Store>(
             } else if this_slot < slot {
                 break Ok(None);
             } else {
-                root = read_previous_block_root_from_block_bytes(&bytes)?;
+                root = read_parent_root_from_block_bytes(&bytes)?;
             }
         } else {
             break Ok(None);
