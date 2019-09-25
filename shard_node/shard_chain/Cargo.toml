@@ -30,6 +30,7 @@ tree_hash = { path = "../../eth2/utils/tree_hash" }
 types = { path = "../../eth2/types" }
 shard_lmd_ghost = { path = "../../eth2/shard_lmd_ghost" }
 lmd_ghost = { path = "../../eth2/lmd_ghost" }
+rand = "0.5.5"
 
 [dev-dependencies]
 rand = "0.5.5"
