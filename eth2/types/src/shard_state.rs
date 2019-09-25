@@ -27,11 +27,11 @@ pub enum Error {
     Clone,
     Serialize,
     Deserialize,
-    TestRandom,
     Encode,
     Decode,
     TreeHash,
     CachedTreeHash,
+    TestRandom,
     CompareFields,
 )]
 pub struct ShardState<T>
@@ -42,6 +42,11 @@ where
     pub slot: ShardSlot,
     pub history_accumulator: FixedLenVec<Hash256, T::HistoryAccumulatorDepth>,
     pub latest_block_header: ShardBlockHeader,
+
+    #[test_random(default)]
+    pub data: Vec<u8>,
+
+    pub exec_env_states: Vec<Hash256>,
 
     #[serde(skip_serializing, skip_deserializing)]
     #[ssz(skip_serializing)]
@@ -60,6 +65,8 @@ impl<T: ShardSpec> ShardState<T> {
                 spec.zero_hash;
                 T::HistoryAccumulatorDepth::to_usize()
             ]),
+            data: vec![],
+            exec_env_states: vec![],
             latest_block_header: ShardBlockHeader::empty(spec, shard),
             tree_hash_cache: TreeHashCache::default(),
         }

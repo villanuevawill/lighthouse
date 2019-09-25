@@ -291,6 +291,7 @@ where
                                 cc.shard,
                                 head_block_root,
                                 head_block_slot,
+                                Hash256::zero(),
                                 state,
                             )
                             .expect("should produce attestation data");
