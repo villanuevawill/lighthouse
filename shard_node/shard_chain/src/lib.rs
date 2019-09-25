@@ -1,9 +1,9 @@
 pub mod checkpoint;
 pub mod errors;
 pub mod fork_choice;
-pub mod shard_chain;
 pub mod harness;
 mod harness_tests;
+pub mod shard_chain;
 
 pub use self::checkpoint::CheckPoint;
 pub use self::errors::{BlockProductionError, ShardChainError};

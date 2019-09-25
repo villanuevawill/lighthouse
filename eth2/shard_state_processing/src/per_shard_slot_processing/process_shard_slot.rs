@@ -12,7 +12,7 @@ pub fn process_shard_slot<T: ShardSpec>(state: &mut ShardState<T>, spec: &ChainS
     let mut depth = 0;
 
     while (state.slot.as_u64() % u64::pow(2, depth as u32) == 0 as u64)
-        && (depth < T::history_accumulator_depth() as u64) 
+        && (depth < T::history_accumulator_depth() as u64)
     {
         state.history_accumulator[depth as usize] = previous_state_root;
         depth += 1;

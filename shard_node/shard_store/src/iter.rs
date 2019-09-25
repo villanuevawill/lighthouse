@@ -32,7 +32,8 @@ impl<'a, T: ShardSpec, U: Store> Iterator for StateRootsIterator<'a, T, U> {
     type Item = (Hash256, ShardSlot);
 
     fn next(&mut self) -> Option<Self::Item> {
-        if (self.slot == T::default_spec().phase_1_fork_slot) || (self.slot > self.shard_state.slot) {
+        if (self.slot == T::default_spec().phase_1_fork_slot) || (self.slot > self.shard_state.slot)
+        {
             return None;
         }
 
@@ -109,7 +110,8 @@ impl<'a, T: ShardSpec, U: Store> Iterator for BlockRootsIterator<'a, T, U> {
     type Item = (Hash256, ShardSlot);
 
     fn next(&mut self) -> Option<Self::Item> {
-        if (self.slot == T::default_spec().phase_1_fork_slot) || (self.slot > self.shard_state.slot) {
+        if (self.slot == T::default_spec().phase_1_fork_slot) || (self.slot > self.shard_state.slot)
+        {
             return None;
         }
 
@@ -125,10 +127,7 @@ impl<'a, T: ShardSpec, U: Store> Iterator for BlockRootsIterator<'a, T, U> {
         let mut latest_block_header = self.shard_state.latest_block_header.clone();
         // zero out the state root to find where it was stored
         latest_block_header.state_root = Hash256::zero();
-        Some((
-            latest_block_header.canonical_root(),
-            self.slot,
-        ))
+        Some((latest_block_header.canonical_root(), self.slot))
     }
 }
 
@@ -192,9 +191,6 @@ impl<'a, T: ShardSpec, U: Store> Iterator for BestBlockRootsIterator<'a, T, U> {
             latest_block_header.state_root = self.shard_state.canonical_root();
         }
 
-        Some((
-            latest_block_header.canonical_root(),
-            self.slot,
-        ))
+        Some((latest_block_header.canonical_root(), self.slot))
     }
 }

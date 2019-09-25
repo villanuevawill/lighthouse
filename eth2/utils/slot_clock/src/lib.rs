@@ -2,9 +2,11 @@ mod system_time_slot_clock;
 mod testing_slot_clock;
 
 pub use crate::system_time_slot_clock::{Error as SystemTimeSlotClockError, SystemTimeSlotClock};
-pub use crate::testing_slot_clock::{Error as TestingSlotClockError, TestingSlotClock, ShardTestingSlotClock};
+pub use crate::testing_slot_clock::{
+    Error as TestingSlotClockError, ShardTestingSlotClock, TestingSlotClock,
+};
 use std::time::Duration;
-pub use types::{Slot, ShardSlot};
+pub use types::{ShardSlot, Slot};
 
 pub trait SlotClock: Send + Sync + Sized {
     type Error;

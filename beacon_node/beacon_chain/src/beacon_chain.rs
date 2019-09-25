@@ -418,7 +418,13 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         let head_block_root = self.head().beacon_block_root;
         let head_block_slot = self.head().beacon_block.slot;
 
-        self.produce_attestation_data_for_block(shard, head_block_root, head_block_slot, Hash256::zero(), &*state)
+        self.produce_attestation_data_for_block(
+            shard,
+            head_block_root,
+            head_block_slot,
+            Hash256::zero(),
+            &*state,
+        )
     }
 
     /// Produce an `AttestationData` that attests to the chain denoted by `block_root` and `state`.
