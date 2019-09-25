@@ -5,20 +5,20 @@ use errors::Error;
 pub mod errors;
 
 pub fn per_shard_block_processing<T: ShardSpec, U: EthSpec>(
-    state: &mut ShardState<T>,
     beacon_state: &BeaconState<U>,
+    state: &mut ShardState<T>,
     block: &ShardBlock,
     spec: &ChainSpec,
 ) -> Result<(), Error> {
-    process_shard_block_header(state, beacon_state, block, spec);
+    process_shard_block_header(beacon_state, state, block, spec);
     // process_shard_attestations(state, beacon_state, block);
     // process_shard_block_data_fees(state, beacon_state, block);
     Ok(())
 }
 
 pub fn process_shard_block_header<T: ShardSpec, U: EthSpec>(
-    state: &mut ShardState<T>,
     beacon_state: &BeaconState<U>,
+    state: &mut ShardState<T>,
     block: &ShardBlock,
     spec: &ChainSpec,
 ) -> Result<(), Error> {
