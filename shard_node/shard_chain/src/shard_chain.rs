@@ -482,13 +482,14 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
     /// Block signing is out of the scope of this function and should be done by a separate program.
     pub fn produce_block(
         &self,
+        body: Vec<u8>,
     ) -> Result<(ShardBlock, ShardState<T::ShardSpec>), BlockProductionError> {
         let state = self.state.read().clone();
         let slot = self
             .read_slot_clock()
             .ok_or_else(|| BlockProductionError::UnableToReadSlot)?;
 
-        self.produce_block_on_state(state, slot)
+        self.produce_block_on_state(state, slot, body)
     }
 
     /// Produce a block for some `slot` upon the given `state`.
@@ -503,6 +504,7 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         &self,
         mut state: ShardState<T::ShardSpec>,
         produce_at_slot: ShardSlot,
+        body: Vec<u8>,
     ) -> Result<(ShardBlock, ShardState<T::ShardSpec>), BlockProductionError> {
         // If required, transition the new state to the present slot.
         while state.slot < produce_at_slot {
@@ -525,6 +527,7 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
             slot: state.slot,
             beacon_block_root,
             parent_root,
+            body,
             state_root: Hash256::zero(),
             attestation: self.op_pool.get_attestation(
                 &state,

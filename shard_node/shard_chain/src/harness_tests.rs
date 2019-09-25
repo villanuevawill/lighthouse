@@ -36,14 +36,14 @@ fn advance_shard_slot() {
     let beacon_slot = harness.beacon_chain.current_state().slot;
     let shard_slot = harness.shard_chain.current_state().slot;
 
-    harness.extend_shard_chain(1);
+    harness.extend_shard_chain(1, vec![]);
 
     for i in 0..30 {
         harness.advance_beacon_slot();
         harness.advance_shard_slot();
         harness.extend_beacon_chain(1);
-        harness.extend_shard_chain(1);
+        harness.extend_shard_chain(1, vec![]);
         harness.advance_shard_slot();
-        harness.extend_shard_chain(1);
+        harness.extend_shard_chain(1, vec![]);
     }
 }
