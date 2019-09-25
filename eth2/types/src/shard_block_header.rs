@@ -27,7 +27,8 @@ pub struct ShardBlockHeader {
     pub parent_root: Hash256,
     pub beacon_block_root: Hash256,
     pub state_root: Hash256,
-    // need to add body
+    #[test_random(default)]
+    pub body: Vec<u8>,
     pub attestation: Vec<ShardAttestation>,
     #[signed_root(skip_hashing)]
     pub signature: Signature,
@@ -41,6 +42,7 @@ impl ShardBlockHeader {
             beacon_block_root: spec.zero_hash,
             parent_root: spec.zero_hash,
             state_root: spec.zero_hash,
+            body: vec![],
             attestation: vec![],
             signature: Signature::empty_signature(),
         }
@@ -58,6 +60,7 @@ impl ShardBlockHeader {
             beacon_block_root: self.beacon_block_root,
             parent_root: self.parent_root,
             state_root: self.state_root,
+            body: self.body,
             attestation: self.attestation,
             signature: self.signature,
         }
@@ -70,6 +73,7 @@ impl ShardBlockHeader {
             beacon_block_root: self.beacon_block_root,
             parent_root: self.parent_root,
             state_root: self.state_root,
+            body: self.body.clone(),
             attestation: self.attestation.clone(),
             signature: self.signature.clone(),
         }
