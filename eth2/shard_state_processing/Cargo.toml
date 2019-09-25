@@ -1,0 +1,10 @@
+[package]
+name = "shard_state_processing"
+version = "0.1.0"
+authors = ["Will Villanueva", "Wil Barnes"]
+edition = "2018"
+
+[dependencies]
+tree_hash = { path = "../utils/tree_hash" }
+types = { path = "../types" }
+
