@@ -50,7 +50,6 @@ pub fn process_shard_block_header<T: ShardSpec, U: EthSpec>(
 
 pub fn verify_block_signature<T: ShardSpec>(
     state: &ShardState<T>,
-    beacon_state: &BeaconState<U>,
     block: &ShardBlock,
     spec: &ChainSpec,
 ) -> Result<(), Error> {
