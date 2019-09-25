@@ -5,16 +5,15 @@ use beacon_chain::{BeaconChain, BeaconChainTypes};
 use parking_lot::{RwLock, RwLockReadGuard};
 use shard_lmd_ghost::LmdGhost;
 use shard_operation_pool::OperationPool;
+use shard_state_processing::{
+    per_shard_block_processing, per_shard_slot_processing, ShardBlockProcessingError,
+    ShardSlotProcessingError,
+};
 use shard_store::iter::{
     BestBlockRootsIterator, BlockIterator, BlockRootsIterator, StateRootsIterator,
 };
 use shard_store::{Error as DBError, Store};
-use slot_clock::{SlotClock, ShardSlotClock};
-use shard_state_processing::{
-    ShardBlockProcessingError,
-    ShardSlotProcessingError,
-    per_shard_block_processing, per_shard_slot_processing,
-};
+use slot_clock::{ShardSlotClock, SlotClock};
 use std::sync::Arc;
 use store::{Error as BeaconDBError, Store as BeaconStore};
 use tree_hash::TreeHash;
@@ -182,9 +181,12 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
 
     pub fn get_block_root_at_epoch(&self, epoch: Epoch) -> Result<Option<Hash256>, Error> {
         let spec = &self.spec;
-        let start_slot_at_epoch = epoch.start_slot(self.spec.slots_per_epoch).shard_slot(spec.slots_per_epoch, spec.shard_slots_per_epoch);
+        let start_slot_at_epoch = epoch
+            .start_slot(self.spec.slots_per_epoch)
+            .shard_slot(spec.slots_per_epoch, spec.shard_slots_per_epoch);
         let current_slot = self.state.read().slot;
-        let root = self.rev_iter_block_roots(current_slot)
+        let root = self
+            .rev_iter_block_roots(current_slot)
             .find(|(_hash, slot)| slot.as_u64() == start_slot_at_epoch.as_u64());
 
         Ok(match root {
@@ -278,9 +280,7 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         let spec = &self.spec;
 
         match self.slot_clock.present_slot() {
-            Ok(Some(some_slot)) => {
-                Some(some_slot)
-            }
+            Ok(Some(some_slot)) => Some(some_slot),
             Ok(None) => None,
             _ => None,
         }

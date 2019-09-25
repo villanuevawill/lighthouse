@@ -1,7 +1,7 @@
-use super::{SlotClock, ShardSlotClock};
+use super::{ShardSlotClock, SlotClock};
 use std::sync::RwLock;
 use std::time::Duration;
-use types::{Slot, ShardSlot};
+use types::{ShardSlot, Slot};
 
 #[derive(Debug, PartialEq)]
 pub enum Error {}
@@ -24,7 +24,6 @@ impl TestingSlotClock {
         self.set_slot(self.present_slot().unwrap().unwrap().as_u64() + 1)
     }
 }
-
 
 impl ShardTestingSlotClock {
     pub fn set_slot(&self, slot: u64) {

@@ -1,6 +1,6 @@
 use crate::*;
-use types::*;
 use errors::Error;
+use types::*;
 
 pub mod errors;
 
@@ -64,8 +64,8 @@ pub fn verify_block_signature<T: ShardSpec>(
     // );
 
     // verify!(
-    //     block 
-    //         .signature 
+    //     block
+    //         .signature
     //         .verify(&block.signed_root()[..], domain, &block_proposer.pubkey)
     // );
 
@@ -84,16 +84,16 @@ pub fn process_shard_attestations<T: ShardSpec, U: EthSpec>(
     //     BlockProcessingError
     // );
 
-    // attestations 
+    // attestations
     //     .par_iter()
     //     .enumerate()
     //     .try_for_each(|(i, attestation)| {
     //         validate_shard_attestation(state, attestation, spec).map_err(|e| e.into_with_index(i))
     //     })?;
 
-    // let shard_committee = beacon_state.get_shard_committee(state.current_epoch(), state.shard); 
+    // let shard_committee = beacon_state.get_shard_committee(state.current_epoch(), state.shard);
     // for (i, validator_idx) in shard_committee.iter().enumerate() {
-    //     verify_block_signature(&state, &beacon_state, ) 
+    //     verify_block_signature(&state, &beacon_state, )
     // }
 
     Ok(())
@@ -116,8 +116,8 @@ pub fn process_shard_block_data_fees<T: ShardSpec, U: EthSpec>(
     // if block.body.len < spec.shard_block_size {
     //     state.basefee += Gwei(cmp::max(1, state.basefee * block.body.len - spec.shard_block_size_target) / quotient)
     // } else {
-    //     state.basefee -= Gwei(cmp::min((1, spec.effective_balance_increment 
-    //                 / spec.epochs_per_shard_period 
+    //     state.basefee -= Gwei(cmp::min((1, spec.effective_balance_increment
+    //                 / spec.epochs_per_shard_period
     //                 / spec.shard_slots_per_epoch)
     //             )
     //         );

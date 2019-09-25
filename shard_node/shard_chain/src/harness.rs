@@ -1,21 +1,23 @@
+use crate::harness_tests;
+use crate::shard_chain::{
+    BlockProcessingOutcome as ShardBlockProcessingOutcome, ShardChain, ShardChainTypes,
+};
 use beacon_chain::{BeaconChain, BeaconChainTypes, BlockProcessingOutcome};
-use crate::shard_chain::{ShardChain, ShardChainTypes, BlockProcessingOutcome as ShardBlockProcessingOutcome};
 use lmd_ghost::LmdGhost;
-use shard_lmd_ghost::{LmdGhost as ShardLmdGhost};
-use slot_clock::{SlotClock, ShardSlotClock};
-use slot_clock::{TestingSlotClock, ShardTestingSlotClock};
+use shard_lmd_ghost::LmdGhost as ShardLmdGhost;
 use shard_state_processing::{per_shard_block_processing, per_shard_slot_processing};
-use state_processing::{per_slot_processing, per_block_processing};
+use shard_store::MemoryStore as ShardMemoryStore;
+use shard_store::Store as ShardStore;
+use slot_clock::{ShardSlotClock, SlotClock};
+use slot_clock::{ShardTestingSlotClock, TestingSlotClock};
+use state_processing::{per_block_processing, per_slot_processing};
 use std::marker::PhantomData;
 use std::sync::Arc;
 use store::MemoryStore;
-use shard_store::{MemoryStore as ShardMemoryStore};
 use store::Store;
-use shard_store::{Store as ShardStore};
+use test_utils::TestingBeaconStateBuilder;
 use tree_hash::{SignedRoot, TreeHash};
 use types::*;
-use test_utils::TestingBeaconStateBuilder;
-use crate::harness_tests;
 
 // For now only accept 100% honest majority the entire time
 
@@ -94,15 +96,18 @@ where
         let beacon_store = Arc::new(MemoryStore::open());
         let shard_store = Arc::new(ShardMemoryStore::open());
 
-        let beacon_state_builder =
-            TestingBeaconStateBuilder::from_default_keypairs_file_if_exists(validator_count, &beacon_spec);
+        let beacon_state_builder = TestingBeaconStateBuilder::from_default_keypairs_file_if_exists(
+            validator_count,
+            &beacon_spec,
+        );
         let (beacon_genesis_state, keypairs) = beacon_state_builder.build();
 
         let mut shard_state = ShardState::genesis(&shard_spec, 0);
         shard_state.latest_block_header.state_root = shard_state.canonical_root();
 
         let mut beacon_genesis_block = BeaconBlock::empty(&beacon_spec);
-        beacon_genesis_block.state_root = Hash256::from_slice(&beacon_genesis_state.tree_hash_root());
+        beacon_genesis_block.state_root =
+            Hash256::from_slice(&beacon_genesis_state.tree_hash_root());
 
         // Slot clock
         let beacon_slot_clock = TestingSlotClock::new(
@@ -123,7 +128,8 @@ where
             beacon_genesis_state,
             beacon_genesis_block,
             beacon_spec.clone(),
-        ).expect("Terminate if beacon chain generation fails");
+        )
+        .expect("Terminate if beacon chain generation fails");
         let beacon_chain_reference = Arc::new(beacon_chain);
 
         let shard_chain = ShardChain::from_genesis(
@@ -133,8 +139,8 @@ where
             shard_spec.clone(),
             0,
             beacon_chain_reference.clone(),
-        ).expect("Terminate if beacon chain generation fails");
-
+        )
+        .expect("Terminate if beacon chain generation fails");
 
         Self {
             beacon_chain: beacon_chain_reference.clone(),
@@ -152,28 +158,34 @@ where
     /// Does not produce blocks or attestations.
     pub fn advance_beacon_slot(&self) {
         self.beacon_chain.slot_clock.advance_slot();
-        self.beacon_chain.catchup_state().expect("should catchup state");
+        self.beacon_chain
+            .catchup_state()
+            .expect("should catchup state");
     }
 
     pub fn advance_shard_slot(&self) {
         self.shard_chain.slot_clock.advance_slot();
-        self.shard_chain.catchup_state().expect("should catchup state");
+        self.shard_chain
+            .catchup_state()
+            .expect("should catchup state");
     }
 
     /// Extend the `BeaconChain` with some blocks and attestations. Returns the root of the
     /// last-produced block (the head of the chain).
     ///
     /// Chain will be extended by `num_blocks` blocks.
-    pub fn extend_beacon_chain(
-        &self,
-        num_blocks: usize,
-    ) -> Hash256 {
+    pub fn extend_beacon_chain(&self, num_blocks: usize) -> Hash256 {
         let mut current_slot = self.beacon_chain.read_slot_clock().unwrap();
         let mut state = self.get_beacon_state_at_slot(current_slot - 1);
         let mut head_block_root = None;
 
         for _ in 0..num_blocks {
-            while self.beacon_chain.read_slot_clock().expect("should have a slot") < current_slot {
+            while self
+                .beacon_chain
+                .read_slot_clock()
+                .expect("should have a slot")
+                < current_slot
+            {
                 self.advance_beacon_slot();
             }
 
@@ -187,11 +199,7 @@ where
             if let BlockProcessingOutcome::Processed { block_root } = outcome {
                 head_block_root = Some(block_root);
 
-                self.add_beacon_attestations_to_op_pool(
-                    &new_state,
-                    block_root,
-                    current_slot,
-                );
+                self.add_beacon_attestations_to_op_pool(&new_state, block_root, current_slot);
             } else {
                 panic!("block should be successfully processed: {:?}", outcome);
             }
@@ -207,16 +215,18 @@ where
     /// last-produced block (the head of the chain).
     ///
     /// Chain will be extended by `num_blocks` blocks.
-    pub fn extend_shard_chain(
-        &self,
-        num_blocks: usize,
-    ) -> Hash256 {
+    pub fn extend_shard_chain(&self, num_blocks: usize) -> Hash256 {
         let mut current_slot = self.shard_chain.read_slot_clock().unwrap();
         let mut state = self.get_shard_state_at_slot(current_slot - 1);
         let mut head_block_root = None;
 
         for _ in 0..num_blocks {
-            while self.shard_chain.read_slot_clock().expect("should have a slot") < current_slot {
+            while self
+                .shard_chain
+                .read_slot_clock()
+                .expect("should have a slot")
+                < current_slot
+            {
                 self.advance_shard_slot();
             }
 
@@ -230,11 +240,7 @@ where
             if let ShardBlockProcessingOutcome::Processed { block_root } = outcome {
                 head_block_root = Some(block_root);
 
-                self.add_shard_attestations_to_op_pool(
-                    &new_state,
-                    block_root,
-                    current_slot,
-                );
+                self.add_shard_attestations_to_op_pool(&new_state, block_root, current_slot);
             } else {
                 panic!("block should be successfully processed: {:?}", outcome);
             }
@@ -293,7 +299,8 @@ where
 
         state.build_all_caches(&self.beacon_spec).unwrap();
 
-        let proposer_index = self.beacon_chain
+        let proposer_index = self
+            .beacon_chain
             .block_proposer(slot)
             .expect("should get block proposer from chain");
 
@@ -315,7 +322,9 @@ where
         block.signature = {
             let message = block.signed_root();
             let epoch = block.slot.epoch(E::slots_per_epoch());
-            let domain = self.beacon_spec.get_domain(epoch, Domain::BeaconProposer, fork);
+            let domain = self
+                .beacon_spec
+                .get_domain(epoch, Domain::BeaconProposer, fork);
             Signature::new(&message, domain, sk)
         };
 
@@ -340,7 +349,8 @@ where
 
         state.build_cache(&self.shard_spec).unwrap();
 
-        let proposer_index = self.shard_chain
+        let proposer_index = self
+            .shard_chain
             .block_proposer(slot)
             .expect("should get block proposer from chain");
 
@@ -352,9 +362,15 @@ where
 
         block.signature = {
             let message = block.signed_root();
-            let epoch = block.slot.epoch(spec.slots_per_epoch, spec.shard_slots_per_beacon_slot);
+            let epoch = block
+                .slot
+                .epoch(spec.slots_per_epoch, spec.shard_slots_per_beacon_slot);
             // need to actually handle forks correctly
-            let domain = self.shard_spec.get_domain(epoch, Domain::ShardProposer, &self.beacon_chain.current_state().fork);
+            let domain = self.shard_spec.get_domain(
+                epoch,
+                Domain::ShardProposer,
+                &self.beacon_chain.current_state().fork,
+            );
             Signature::new(&message, domain, sk)
         };
 
@@ -384,14 +400,16 @@ where
                 let shard = cc.shard;
 
                 let crosslink_data_root = match shard {
-                    0 => self.shard_chain.get_block_root_at_epoch(state.current_epoch())
-                            .expect("should get crosslink root")
-                            .unwrap_or(Hash256::zero()),
+                    0 => self
+                        .shard_chain
+                        .get_block_root_at_epoch(state.current_epoch())
+                        .expect("should get crosslink root")
+                        .unwrap_or(Hash256::zero()),
                     _ => Hash256::zero(),
                 };
 
                 for (i, validator_index) in cc.committee.iter().enumerate() {
-                     if attesting_validators.contains(validator_index) {
+                    if attesting_validators.contains(validator_index) {
                         let data = self
                             .beacon_chain
                             .produce_attestation_data_for_block(
@@ -456,18 +474,19 @@ where
 
         let attesting_validators: Vec<usize> = (0..self.keypairs.len()).collect();
 
-        let shard_committee = self.shard_chain.shard_committee(head_block_slot.epoch(spec.slots_per_epoch, spec.shard_slots_per_beacon_slot)).expect("should get committees");
+        let shard_committee = self
+            .shard_chain
+            .shard_committee(
+                head_block_slot.epoch(spec.slots_per_epoch, spec.shard_slots_per_beacon_slot),
+            )
+            .expect("should get committees");
         let committee_size = shard_committee.committee.len();
 
         for (i, validator_index) in shard_committee.committee.iter().enumerate() {
-                if attesting_validators.contains(validator_index) {
+            if attesting_validators.contains(validator_index) {
                 let data = self
                     .shard_chain
-                    .produce_attestation_data_for_block(
-                        head_block_root,
-                        head_block_slot,
-                        state,
-                    )
+                    .produce_attestation_data_for_block(head_block_root, head_block_slot, state)
                     .expect("should produce attestation data");
 
                 let mut aggregation_bitfield = Bitfield::new();
@@ -476,8 +495,12 @@ where
 
                 let signature = {
                     let message = data.tree_hash_root();
-                    let domain =
-                        spec.get_domain(data.target_slot.epoch(spec.slots_per_epoch, spec.shard_slots_per_beacon_slot), Domain::ShardAttestation, fork);
+                    let domain = spec.get_domain(
+                        data.target_slot
+                            .epoch(spec.slots_per_epoch, spec.shard_slots_per_beacon_slot),
+                        Domain::ShardAttestation,
+                        fork,
+                    );
 
                     let mut agg_sig = AggregateSignature::new();
                     agg_sig.add(&Signature::new(
@@ -495,8 +518,7 @@ where
                     signature,
                 };
 
-                self.shard_chain
-                    .process_attestation(attestation);
+                self.shard_chain.process_attestation(attestation);
             }
         }
     }

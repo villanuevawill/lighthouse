@@ -58,4 +58,3 @@ easy_from_to!(ShardStateError, BlockProductionError);
 easy_from_to!(BeaconStateError, BlockProductionError);
 easy_from_to!(BeaconStateError, ShardChainError);
 easy_from_to!(ShardSlotProcessingError, BlockProductionError);
-
