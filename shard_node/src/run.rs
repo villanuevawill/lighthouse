@@ -1,11 +1,19 @@
-use shard_chain::ShardChainHarness;
 use lmd_ghost::ThreadSafeReducedTree;
 use rand::Rng;
+use shard_chain::ShardChainHarness;
 use shard_lmd_ghost::ThreadSafeReducedTree as ShardThreadSafeReducedTree;
 use shard_store::{MemoryStore as ShardMemoryStore, Store as ShardStore};
 use store::{MemoryStore, Store};
+use tokio::prelude::*;
+use tokio::runtime::Builder;
+use tokio::runtime::Runtime;
+use tokio::runtime::TaskExecutor;
+use tokio::timer::Interval;
+use tokio_timer::clock::Clock;
 use types::test_utils::{SeedableRng, TestRandom, XorShiftRng};
 use types::{EthSpec, MinimalEthSpec, MinimalShardSpec, Slot};
+
+use std::time::{Duration, Instant};
 
 pub const VALIDATOR_COUNT: usize = 24;
 
@@ -25,12 +33,45 @@ fn get_harness(
     harness
 }
 
-pub fn run_harness() -> () {
+pub fn run_harness(log: &slog::Logger) -> () {
+    // handle tokio result or error
+    let runtime = Builder::new()
+        .name_prefix("shard-")
+        .clock(Clock::system())
+        .build()
+        .map_err(|e| format!("{:?}", e))
+        .unwrap();
+
+    let executor = runtime.executor();
+
     let harness = get_harness(VALIDATOR_COUNT);
     let num_blocks_produced =
         MinimalEthSpec::slots_per_epoch() * harness.beacon_spec.phase_1_fork_epoch;
 
     harness.extend_beacon_chain((num_blocks_produced + 1) as usize);
-    harness.extend_shard_chain(1, vec![]);   
-    println!("{:?}", harness.shard_chain.current_state().clone());
+    harness.extend_shard_chain(1, vec![]);
+
+    let interval = Interval::new(Instant::now(), Duration::from_millis(3000));
+    let mut test = 0;
+    executor.spawn(
+        interval
+            .for_each(move |_| {
+                harness.advance_shard_slot();
+                println!("Shard Slot Advanced");
+                if test % 2 == 0 {
+                    harness.advance_beacon_slot();
+                    println!("Beacon Slot Advanced");
+                    harness.extend_beacon_chain(1);
+                    println!("Beacon Slot Published");
+                }
+                harness.extend_shard_chain(1, vec![]);
+                println!("Shard Slot Published");
+                test = test + 1;
+                Ok(())
+            })
+            .map_err(|e| panic!("interval errored; err={:?}", e)),
+    );
+
+    // manage proper messages, etc
+    runtime.shutdown_on_idle().wait().unwrap();
 }
