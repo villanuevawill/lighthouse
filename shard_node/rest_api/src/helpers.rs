@@ -1,8 +1,8 @@
 use crate::{ApiError, ApiResult};
 use beacon_chain::BeaconChainTypes;
-use shard_chain::{ShardChain, ShardChainTypes};
 use http::header;
 use hyper::{Body, Request};
+use shard_chain::{ShardChain, ShardChainTypes};
 use std::sync::Arc;
 
 /// Checks the provided request to ensure that the `content-type` header.
@@ -20,7 +20,7 @@ pub fn check_content_type_for_json(req: &Request<Body>) -> Result<(), ApiError> 
     }
 }
 
-pub fn get_shard_chain_from_request<T: ShardChainTypes + 'static, L: BeaconChainTypes + 'static> (
+pub fn get_shard_chain_from_request<T: ShardChainTypes + 'static, L: BeaconChainTypes + 'static>(
     req: &Request<Body>,
 ) -> Result<(Arc<ShardChain<T, L>>), ApiError> {
     // Get shard chain

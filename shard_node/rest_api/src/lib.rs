@@ -7,20 +7,20 @@ mod config;
 mod error;
 mod helpers;
 mod response_builder;
-mod url_query;
 mod shard;
+mod url_query;
 
 use beacon_chain::BeaconChainTypes;
-use shard_chain::{ShardChain, ShardChainTypes};
 use error::{ApiError, ApiResult};
 use futures::future::IntoFuture;
 use hyper::rt::Future;
 use hyper::service::Service;
 use hyper::{Body, Method, Request, Response, Server};
+use shard_chain::{ShardChain, ShardChainTypes};
 use slog::{info, o, warn};
 use std::sync::Arc;
-use url_query::UrlQuery;
 use tokio::runtime::TaskExecutor;
+use url_query::UrlQuery;
 
 pub use config::Config as ApiConfig;
 
@@ -100,14 +100,12 @@ pub fn start_server<T: ShardChainTypes + 'static, L: BeaconChainTypes + 'static>
     };
 
     let log_clone = log.clone();
-    let server = Server::bind(&bind_addr)
-        .serve(service)
-        .map_err(move |e| {
-            warn!(
-            log_clone,
-            "API failed to start, Unable to bind"; "address" => format!("{:?}", e)
-            )
-        });
+    let server = Server::bind(&bind_addr).serve(service).map_err(move |e| {
+        warn!(
+        log_clone,
+        "API failed to start, Unable to bind"; "address" => format!("{:?}", e)
+        )
+    });
 
     info!(
     log,
