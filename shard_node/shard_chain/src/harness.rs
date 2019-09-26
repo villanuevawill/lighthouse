@@ -216,7 +216,7 @@ where
     /// last-produced block (the head of the chain).
     ///
     /// Chain will be extended by `num_blocks` blocks.
-    pub fn extend_shard_chain(&self, num_blocks: usize, body: Vec<u8>) -> Hash256 {
+    pub fn extend_shard_chain(&self, num_blocks: usize) -> Hash256 {
         let mut current_slot = self.shard_chain.read_slot_clock().unwrap();
         let mut state = self.get_shard_state_at_slot(current_slot - 1);
         let mut head_block_root = None;
@@ -231,7 +231,7 @@ where
                 self.advance_shard_slot();
             }
 
-            let (block, new_state) = self.build_shard_block(state.clone(), current_slot, &body);
+            let (block, new_state) = self.build_shard_block(state.clone(), current_slot);
 
             let outcome = self
                 .shard_chain
@@ -337,7 +337,6 @@ where
         &self,
         mut state: ShardState<U>,
         slot: ShardSlot,
-        body: &Vec<u8>,
     ) -> (ShardBlock, ShardState<U>) {
         let spec = &self.shard_spec;
         if slot < state.slot {
@@ -359,7 +358,7 @@ where
         let sk = &self.keypairs[proposer_index].sk;
         let (mut block, state) = self
             .shard_chain
-            .produce_block_on_state(state, slot, body.clone())
+            .produce_block_on_state(state, slot)
             .expect("should produce block");
 
         block.signature = {
