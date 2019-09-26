@@ -55,6 +55,8 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> Service for ApiService<T, L> {
 
         let result = match (req.method(), path.as_ref()) {
             (&Method::GET, "/hello") => into_boxfut(shard::hello(req)),
+            (&Method::GET, "/shard/0/state") => into_boxfut(shard::get_state::<T, L>(req)),
+            (&Method::GET, "/shard/0/block") => into_boxfut(shard::get_block::<T, L>(req)),
             _ => Box::new(futures::future::err(ApiError::NotFound(
                 "Request path and/or method not found.".to_owned(),
             ))),
