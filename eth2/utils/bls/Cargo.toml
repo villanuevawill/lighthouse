@@ -18,4 +18,3 @@ tree_hash = { path = "../tree_hash" }
 
 [features]
 fake_crypto = []
-default = ["fake_crypto"]
