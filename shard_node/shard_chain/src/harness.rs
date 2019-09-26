@@ -75,7 +75,7 @@ where
     pub beacon_chain: Arc<BeaconChain<CommonBeaconTypes<L, E>>>,
     pub keypairs: Vec<Keypair>,
     pub beacon_spec: ChainSpec,
-    pub shard_chain: ShardChain<CommonShardTypes<T, U>, CommonBeaconTypes<L, E>>,
+    pub shard_chain: Arc<ShardChain<CommonShardTypes<T, U>, CommonBeaconTypes<L, E>>>,
     pub shard_spec: ChainSpec,
     _phantom_t: PhantomData<T>,
     _phantom_u: PhantomData<U>,
@@ -141,12 +141,13 @@ where
             beacon_chain_reference.clone(),
         )
         .expect("Terminate if beacon chain generation fails");
+        let shard_chain_reference = Arc::new(shard_chain);
 
         Self {
             beacon_chain: beacon_chain_reference.clone(),
             keypairs,
             beacon_spec,
-            shard_chain: shard_chain,
+            shard_chain: shard_chain_reference.clone(),
             shard_spec,
             _phantom_t: PhantomData,
             _phantom_u: PhantomData,
