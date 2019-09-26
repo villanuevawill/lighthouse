@@ -12,6 +12,7 @@ use types::{
 #[derive(Default, Debug)]
 pub struct OperationPool<T: ShardSpec + Default> {
     attestations: RwLock<HashMap<AttestationId, Vec<ShardAttestation>>>,
+    body: RwLock<Vec<u8>>,
     _phantom: PhantomData<T>,
 }
 
@@ -103,6 +104,20 @@ impl<T: ShardSpec> OperationPool<T> {
                 .first()
                 .map_or(false, |att| finalized_state.slot <= att.data.target_slot)
         });
+    }
+
+    // This is temporary and should not be here at all - this would actually be defined within
+    // the validator client and its own communication with the relay network. We will put it here for now
+    // as it is the most simple. As the simulation advances, this should be removed
+    pub fn insert_body(
+        &self,
+        body: Vec<u8>,
+    ) -> () {
+        *self.body.write() = body;
+    }
+
+    pub fn get_body(&self) -> Vec<u8> {
+        self.body.read().clone()
     }
 }
 
