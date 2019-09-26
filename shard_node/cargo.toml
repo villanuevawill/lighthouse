@@ -10,6 +10,7 @@ types = { path = "../eth2/types" }
 toml = "^0.5"
 store = { path = "../beacon_node/store" }
 shard_store = { path = "./shard_store" }
+rest_api = { path = "./rest_api" }
 clap = "2.32.0"
 serde = "1.0"
 shard_operation_pool = { path = "../eth2/shard_operation_pool" }
