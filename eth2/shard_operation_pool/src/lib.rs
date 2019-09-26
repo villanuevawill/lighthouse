@@ -117,7 +117,10 @@ impl<T: ShardSpec> OperationPool<T> {
     }
 
     pub fn get_body(&self) -> Vec<u8> {
-        self.body.read().clone()
+        let body = self.body.read().clone();
+        // quite hacky to reset it - but this does not belong here in the first place
+        *self.body.write() = vec![];
+        body
     }
 }
 

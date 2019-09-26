@@ -77,7 +77,7 @@ pub fn run_harness(log: &slog::Logger) -> () {
     );
 
     harness.extend_beacon_chain((num_blocks_produced + 1) as usize);
-    harness.extend_shard_chain(1, vec![]);
+    harness.extend_shard_chain(1);
 
     let interval = Interval::new(Instant::now(), Duration::from_millis(3000));
     let mut test = 0;
@@ -95,7 +95,7 @@ pub fn run_harness(log: &slog::Logger) -> () {
                     harness.extend_beacon_chain(1);
                     info!(active_logger, "Beacon Block Produced";);
                 }
-                harness.extend_shard_chain(1, vec![]);
+                harness.extend_shard_chain(1);
                 info!(active_logger, "Shard Block Produced";);
                 test = test + 1;
                 Ok(())
