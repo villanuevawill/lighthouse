@@ -5,12 +5,12 @@ use crate::shard_chain::{
 use beacon_chain::{BeaconChain, BeaconChainTypes, BlockProcessingOutcome};
 use lmd_ghost::LmdGhost;
 use shard_lmd_ghost::LmdGhost as ShardLmdGhost;
-use shard_state_processing::{per_shard_block_processing, per_shard_slot_processing};
+use shard_state_processing::per_shard_slot_processing;
 use shard_store::MemoryStore as ShardMemoryStore;
 use shard_store::Store as ShardStore;
 use slot_clock::{ShardSlotClock, SlotClock};
 use slot_clock::{ShardTestingSlotClock, TestingSlotClock};
-use state_processing::{per_block_processing, per_slot_processing};
+use state_processing::per_slot_processing;
 use std::marker::PhantomData;
 use std::sync::Arc;
 use store::MemoryStore;

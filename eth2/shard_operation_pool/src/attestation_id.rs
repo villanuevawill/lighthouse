@@ -1,9 +1,7 @@
 use int_to_bytes::int_to_bytes8;
 use ssz::ssz_encode;
 use ssz_derive::{Decode, Encode};
-use types::{
-    BeaconState, ChainSpec, Domain, Epoch, EthSpec, ShardAttestationData, ShardSlot, ShardState,
-};
+use types::{BeaconState, ChainSpec, Domain, Epoch, EthSpec, ShardAttestationData, ShardSlot};
 
 /// Serialized `AttestationData` augmented with a domain to encode the fork info.
 #[derive(PartialEq, Eq, Clone, Hash, Debug, PartialOrd, Ord, Encode, Decode)]

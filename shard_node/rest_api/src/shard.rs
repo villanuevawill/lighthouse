@@ -1,17 +1,14 @@
 use crate::helpers::*;
 use crate::response_builder::ResponseBuilder;
-use crate::{ApiError, ApiResult, BoxFut, UrlQuery};
+use crate::{ApiError, ApiResult, BoxFut};
 use beacon_chain::BeaconChainTypes;
 use futures::future::Future;
-use futures::future::IntoFuture;
 use futures::stream::Stream;
 use hex;
-use http::header;
-use hyper::{Body, Request, Response, StatusCode};
+use hyper::{Body, Request};
 use serde::Deserialize;
-use shard_chain::{ShardChain, ShardChainTypes};
-use slog::{info, trace, warn};
-use ssz_derive::Encode;
+use shard_chain::ShardChainTypes;
+use slog::info;
 
 pub fn get_state<T: ShardChainTypes + 'static, L: BeaconChainTypes + 'static>(
     req: Request<Body>,

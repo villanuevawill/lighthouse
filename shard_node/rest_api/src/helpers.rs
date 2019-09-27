@@ -1,4 +1,4 @@
-use crate::{ApiError, ApiResult};
+use crate::ApiError;
 use beacon_chain::BeaconChainTypes;
 use http::header;
 use hyper::{Body, Request};
