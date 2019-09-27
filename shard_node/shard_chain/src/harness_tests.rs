@@ -1,4 +1,5 @@
 use crate::harness::{CommonBeaconTypes, ShardChainHarness};
+use hex;
 use lmd_ghost::ThreadSafeReducedTree;
 use rand::Rng;
 use shard_lmd_ghost::ThreadSafeReducedTree as ShardThreadSafeReducedTree;
@@ -36,6 +37,9 @@ fn advance_shard_slot() {
     let beacon_slot = harness.beacon_chain.current_state().slot;
     let shard_slot = harness.shard_chain.current_state().slot;
 
+    harness
+        .shard_chain
+        .process_body(hex::decode("48656c6c6f20776f726c6421").unwrap());
     harness.extend_shard_chain(1);
 
     for i in 0..30 {

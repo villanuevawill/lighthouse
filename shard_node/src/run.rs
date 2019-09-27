@@ -67,8 +67,7 @@ pub fn run_harness(log: &slog::Logger) -> () {
 
     let harness = get_harness(VALIDATOR_COUNT);
     let fork_epoch = harness.beacon_spec.phase_1_fork_epoch;
-    let num_blocks_produced =
-        MinimalEthSpec::slots_per_epoch() * fork_epoch;
+    let num_blocks_produced = MinimalEthSpec::slots_per_epoch() * fork_epoch;
 
     info!(
         log,
