@@ -1,0 +1,27 @@
+[package]
+name = "shard_client"
+version = "0.1.0"
+authors = ["Will Villanueva"]
+edition = "2018"
+
+[dependencies]
+shard_chain = { path = "../shard_chain" }
+types = { path = "../../eth2/types" }
+toml = "^0.5"
+store = { path = "../../beacon_node/store" }
+shard_store = { path = "../shard_store" }
+rest_api = { path = "../rest_api" }
+serde = "1.0"
+shard_operation_pool = { path = "../../eth2/shard_operation_pool" }
+slog = { version = "^2.2.3" , features = ["max_level_trace"] }
+slog-term = "^2.4.0"
+slog-async = "^2.3.0"
+tokio = "0.1.15"
+tokio-timer = "0.2.10"
+futures = "0.1.25"
+exit-future = "0.1.3"
+shard_state_processing = { path = "../../eth2/shard_state_processing" }
+env_logger = "0.6.1"
+shard_lmd_ghost = { path = "../../eth2/shard_lmd_ghost" }
+lmd_ghost = { path = "../../eth2/lmd_ghost" }
+rand = "0.5.5"
