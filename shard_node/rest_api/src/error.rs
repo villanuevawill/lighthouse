@@ -58,6 +58,12 @@ impl From<types::ShardStateError> for ApiError {
     }
 }
 
+impl From<hex::FromHexError> for ApiError {
+    fn from(e: hex::FromHexError) -> ApiError {
+        ApiError::BadRequest(format!("Could not decode hex: {:?}", e))
+    }
+}
+
 impl From<hyper::error::Error> for ApiError {
     fn from(e: hyper::error::Error) -> ApiError {
         ApiError::ServerError(format!("Networking error: {:?}", e))

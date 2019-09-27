@@ -53,28 +53,17 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> Service for ApiService<T, L> {
 
         let path = req.uri().path().to_string();
 
-        let result = match (req.method(), path.as_ref()) {
+        // errors are not being converted at the moment - so any validation error
+        // will take down the server. There is a PR in progress to fix this issue:
+        // https://github.com/sigp/lighthouse/pull/537
+        match (req.method(), path.as_ref()) {
             (&Method::GET, "/shard/0/state") => into_boxfut(shard::get_state::<T, L>(req)),
             (&Method::GET, "/shard/0/block") => into_boxfut(shard::get_block::<T, L>(req)),
+            (&Method::POST, "/shard/0/block_body") => shard::process_block_body::<T, L>(req),
             _ => Box::new(futures::future::err(ApiError::NotFound(
                 "Request path and/or method not found.".to_owned(),
             ))),
-        };
-
-        let response = match result.wait() {
-            // Return the `hyper::Response`.
-            Ok(response) => {
-                slog::debug!(self.log, "Request successful: {:?}", path);
-                response
-            }
-            // Map the `ApiError` into `hyper::Response`.
-            Err(e) => {
-                slog::debug!(self.log, "Request failure: {:?}", path);
-                e.into()
-            }
-        };
-
-        Box::new(futures::future::ok(response))
+        }
     }
 }
 
@@ -91,12 +80,12 @@ pub fn start_server<T: ShardChainTypes + 'static, L: BeaconChainTypes + 'static>
 
     // Clone our stateful objects, for use in service closure.
     let server_log = log.clone();
-    let server_bc = shard_chain.clone();
+    let server_sc = shard_chain.clone();
 
     let service = move || -> futures::future::FutureResult<ApiService<T, L>, String> {
         futures::future::ok(ApiService {
             log: server_log.clone(),
-            shard_chain: server_bc.clone(),
+            shard_chain: server_sc.clone(),
         })
     };
 
@@ -109,10 +98,10 @@ pub fn start_server<T: ShardChainTypes + 'static, L: BeaconChainTypes + 'static>
     });
 
     info!(
-    log,
-    "REST API started";
-    "address" => format!("{}", config.listen_address),
-    "port" => config.port,
+        log,
+        "REST API started";
+        "address" => format!("{}", config.listen_address),
+        "port" => config.port,
     );
 
     executor.spawn(server);

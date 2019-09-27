@@ -109,10 +109,7 @@ impl<T: ShardSpec> OperationPool<T> {
     // This is temporary and should not be here at all - this would actually be defined within
     // the validator client and its own communication with the relay network. We will put it here for now
     // as it is the most simple. As the simulation advances, this should be removed
-    pub fn insert_body(
-        &self,
-        body: Vec<u8>,
-    ) -> () {
+    pub fn insert_body(&self, body: Vec<u8>) -> () {
         *self.body.write() = body;
     }
 

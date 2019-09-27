@@ -13,6 +13,7 @@ shard_store = { path = "../shard_store" }
 failure = "0.1"
 failure_derive = "0.1"
 hashing = { path = "../../eth2/utils/hashing" }
+hex = "^0.4.0"
 parking_lot = "0.7"
 prometheus = "^0.6"
 log = "0.4"
