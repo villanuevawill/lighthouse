@@ -16,6 +16,9 @@ use ssz_derive::Encode;
 pub fn get_state<T: ShardChainTypes + 'static, L: BeaconChainTypes + 'static>(
     req: Request<Body>,
 ) -> ApiResult {
+    let log = get_logger_from_request(&req);
+    info!(log, "Latest state requested");
+
     let shard_chain = get_shard_chain_from_request::<T, L>(&req)?;
     let current_state = shard_chain.current_state();
 
@@ -25,6 +28,9 @@ pub fn get_state<T: ShardChainTypes + 'static, L: BeaconChainTypes + 'static>(
 pub fn get_block<T: ShardChainTypes + 'static, L: BeaconChainTypes + 'static>(
     req: Request<Body>,
 ) -> ApiResult {
+    let log = get_logger_from_request(&req);
+    info!(log, "Latest block requested");
+
     let shard_chain = get_shard_chain_from_request::<T, L>(&req)?;
     let current_block = &shard_chain.head().shard_block;
 
