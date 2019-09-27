@@ -38,6 +38,7 @@ members = [
 	"shard_node",
 	"shard_node/shard_store",
 	"shard_node/shard_chain",
+	"shard_node/shard_client",
 	"shard_node/rest_api",
 	"tests/ef_tests",
 	"protos",

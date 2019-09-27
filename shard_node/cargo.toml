@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 shard_chain = { path = "./shard_chain" }
+shard_client = { path = "./shard_client" }
 types = { path = "../eth2/types" }
 toml = "^0.5"
 store = { path = "../beacon_node/store" }

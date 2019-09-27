@@ -44,5 +44,5 @@ fn main() {
 
     let mut log = slog::Logger::root(drain.fuse(), o!());
 
-    run::run_harness(&log);
+    run::run_simulation(&log);
 }
