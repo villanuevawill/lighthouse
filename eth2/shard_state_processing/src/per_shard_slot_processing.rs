@@ -1,5 +1,4 @@
 use crate::*;
-use tree_hash::TreeHash;
 use types::*;
 
 use process_shard_slot::process_shard_slot;

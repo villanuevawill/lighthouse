@@ -1,13 +1,10 @@
 mod attestation_id;
 
 use attestation_id::AttestationId;
-use itertools::Itertools;
 use parking_lot::RwLock;
-use std::collections::{btree_map::Entry, hash_map, BTreeMap, HashMap, HashSet};
+use std::collections::{hash_map, HashMap};
 use std::marker::PhantomData;
-use types::{
-    BeaconState, ChainSpec, EthSpec, ShardAttestation, ShardSlot, ShardSpec, ShardState, Validator,
-};
+use types::{BeaconState, ChainSpec, EthSpec, ShardAttestation, ShardSlot, ShardSpec, ShardState};
 
 #[derive(Default, Debug)]
 pub struct OperationPool<T: ShardSpec + Default> {

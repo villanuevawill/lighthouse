@@ -7,16 +7,13 @@ use shard_lmd_ghost::LmdGhost;
 use shard_operation_pool::OperationPool;
 use shard_state_processing::{
     per_shard_block_processing, per_shard_slot_processing, ShardBlockProcessingError,
-    ShardSlotProcessingError,
 };
 use shard_store::iter::{
     BestBlockRootsIterator, BlockIterator, BlockRootsIterator, StateRootsIterator,
 };
 use shard_store::{Error as DBError, Store};
-use slot_clock::{ShardSlotClock, SlotClock};
+use slot_clock::ShardSlotClock;
 use std::sync::Arc;
-use store::{Error as BeaconDBError, Store as BeaconStore};
-use tree_hash::TreeHash;
 use types::*;
 
 #[derive(Debug, PartialEq)]
@@ -277,8 +274,6 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
     /// call to `read_slot_clock` results in a higher slot than a call to `present_slot`,
     /// `self.state` should undergo per slot processing.
     pub fn read_slot_clock(&self) -> Option<ShardSlot> {
-        let spec = &self.spec;
-
         match self.slot_clock.present_slot() {
             Ok(Some(some_slot)) => Some(some_slot),
             Ok(None) => None,

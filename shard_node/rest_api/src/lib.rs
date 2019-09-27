@@ -1,6 +1,6 @@
 #[macro_use]
 mod macros;
-#[macro_use]
+
 extern crate lazy_static;
 
 mod config;
@@ -20,7 +20,6 @@ use shard_chain::{ShardChain, ShardChainTypes};
 use slog::{info, o, warn};
 use std::sync::Arc;
 use tokio::runtime::TaskExecutor;
-use url_query::UrlQuery;
 
 pub use config::Config as ApiConfig;
 

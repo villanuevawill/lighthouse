@@ -1,7 +1,7 @@
 use crate::Store;
 use std::borrow::Cow;
 use std::sync::Arc;
-use types::{Hash256, ShardBlock, ShardSlot, ShardSpec, ShardState, ShardStateError};
+use types::{Hash256, ShardBlock, ShardSlot, ShardSpec, ShardState};
 
 #[derive(Clone)]
 pub struct StateRootsIterator<'a, T: ShardSpec, U> {

@@ -1,12 +1,9 @@
-use crate::harness::{CommonBeaconTypes, ShardChainHarness};
-use hex;
+use crate::harness::ShardChainHarness;
 use lmd_ghost::ThreadSafeReducedTree;
-use rand::Rng;
 use shard_lmd_ghost::ThreadSafeReducedTree as ShardThreadSafeReducedTree;
-use shard_store::{MemoryStore as ShardMemoryStore, Store as ShardStore};
-use store::{MemoryStore, Store};
-use types::test_utils::{SeedableRng, TestRandom, XorShiftRng};
-use types::{Deposit, EthSpec, Hash256, MinimalEthSpec, MinimalShardSpec, Slot};
+use shard_store::MemoryStore as ShardMemoryStore;
+use store::MemoryStore;
+use types::{MinimalEthSpec, MinimalShardSpec};
 
 pub const VALIDATOR_COUNT: usize = 24;
 

@@ -1,13 +1,13 @@
-use crate::{ShardChain, ShardChainError, ShardChainTypes};
+use crate::{ShardChain, ShardChainTypes};
 use beacon_chain::BeaconChainTypes;
 use shard_lmd_ghost::LmdGhost;
-use shard_store::{Error as StoreError, Store};
+use shard_store::Error as StoreError;
 use state_processing::common::get_shard_attesting_indices_unsorted;
 use std::sync::Arc;
-use store::{Error as BeaconStoreError, Store as BeaconStore};
+use store::Error as BeaconStoreError;
 use types::{
-    BeaconBlock, BeaconState, BeaconStateError, Epoch, EthSpec, Hash256, ShardAttestation,
-    ShardBlock, ShardSlot, ShardSpec, ShardState, ShardStateError,
+    BeaconState, BeaconStateError, EthSpec, Hash256, ShardAttestation, ShardBlock, ShardSlot,
+    ShardStateError,
 };
 
 type Result<T> = std::result::Result<T, Error>;

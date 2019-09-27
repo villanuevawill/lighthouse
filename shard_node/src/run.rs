@@ -1,8 +1,5 @@
-use slog::{error, info, warn};
 use tokio::prelude::*;
 use tokio::runtime::Builder;
-use tokio::runtime::Runtime;
-use tokio::runtime::TaskExecutor;
 use tokio_timer::clock::Clock;
 
 pub fn run_simulation(log: &slog::Logger) -> () {

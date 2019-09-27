@@ -1,19 +1,14 @@
 use lmd_ghost::ThreadSafeReducedTree;
-use rand::Rng;
 use rest_api::{start_server, ApiConfig};
 use shard_chain::ShardChainHarness;
 use shard_lmd_ghost::ThreadSafeReducedTree as ShardThreadSafeReducedTree;
-use shard_store::{MemoryStore as ShardMemoryStore, Store as ShardStore};
-use slog::{error, info, o, warn};
-use store::{MemoryStore, Store};
+use shard_store::MemoryStore as ShardMemoryStore;
+use slog::info;
+use store::MemoryStore;
 use tokio::prelude::*;
-use tokio::runtime::Builder;
-use tokio::runtime::Runtime;
 use tokio::runtime::TaskExecutor;
 use tokio::timer::Interval;
-use tokio_timer::clock::Clock;
-use types::test_utils::{SeedableRng, TestRandom, XorShiftRng};
-use types::{EthSpec, MinimalEthSpec, MinimalShardSpec, Slot};
+use types::{EthSpec, MinimalEthSpec, MinimalShardSpec};
 
 use std::time::{Duration, Instant};
 

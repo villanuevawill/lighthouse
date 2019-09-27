@@ -1,9 +1,8 @@
 mod run;
 
 extern crate clap;
-use clap::{App, Arg, SubCommand};
-use shard_chain::ShardChainHarness;
-use slog::{crit, o, Drain, Level};
+use clap::{App, Arg};
+use slog::{o, Drain, Level};
 
 fn main() {
     let matches = App::new("My Super Program")
@@ -28,7 +27,7 @@ fn main() {
         .get_matches();
 
     // Matches number of shards to run
-    let shards = matches.value_of("shards").unwrap_or("1");
+    // let shards = matches.value_of("shards").unwrap_or("1");
 
     // build the initial logger
     let decorator = slog_term::TermDecorator::new().build();
@@ -42,7 +41,7 @@ fn main() {
         _ => drain.filter_level(Level::Trace),
     };
 
-    let mut log = slog::Logger::root(drain.fuse(), o!());
+    let log = slog::Logger::root(drain.fuse(), o!());
 
     run::run_simulation(&log);
 }
