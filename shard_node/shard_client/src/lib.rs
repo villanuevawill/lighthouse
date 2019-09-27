@@ -32,7 +32,7 @@ pub fn run_shard_chain(log: &slog::Logger, executor: &TaskExecutor) -> () {
         "shard_node_id" => "0",
     );
 
-    let harness = get_harness(VALIDATOR_COUNT);
+    let harness = get_harness(VALIDATOR_COUNT, log.clone());
     let fork_epoch = harness.beacon_spec.phase_1_fork_epoch;
     let num_blocks_produced = MinimalEthSpec::slots_per_epoch() * fork_epoch;
 
@@ -76,9 +76,10 @@ pub fn run_shard_chain(log: &slog::Logger, executor: &TaskExecutor) -> () {
 
 fn get_harness(
     validator_count: usize,
+    log: slog::Logger,
 ) -> ShardChainHarness<TestBeaconForkChoice, MinimalEthSpec, TestShardForkChoice, MinimalShardSpec>
 {
-    let harness = ShardChainHarness::new(validator_count);
+    let harness = ShardChainHarness::new(validator_count, log);
 
     // Move past the zero slot
     harness.advance_beacon_slot();

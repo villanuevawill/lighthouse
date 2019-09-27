@@ -2,6 +2,8 @@ use crate::harness::ShardChainHarness;
 use lmd_ghost::ThreadSafeReducedTree;
 use shard_lmd_ghost::ThreadSafeReducedTree as ShardThreadSafeReducedTree;
 use shard_store::MemoryStore as ShardMemoryStore;
+use slog::Logger;
+use sloggers::{terminal::TerminalLoggerBuilder, types::Severity, Build};
 use store::MemoryStore;
 use types::{MinimalEthSpec, MinimalShardSpec};
 
@@ -14,7 +16,12 @@ fn get_harness(
     validator_count: usize,
 ) -> ShardChainHarness<TestBeaconForkChoice, MinimalEthSpec, TestShardForkChoice, MinimalShardSpec>
 {
-    let harness = ShardChainHarness::new(validator_count);
+    let log = TerminalLoggerBuilder::new()
+        .level(Severity::Warning)
+        .build()
+        .expect("logger should build");
+
+    let harness = ShardChainHarness::new(validator_count, log);
 
     // Move past the zero slot
     harness.advance_beacon_slot();

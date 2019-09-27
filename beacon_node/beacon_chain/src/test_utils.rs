@@ -1,5 +1,6 @@
 use crate::{BeaconChain, BeaconChainTypes, BlockProcessingOutcome};
 use lmd_ghost::LmdGhost;
+use slog::Logger;
 use slot_clock::SlotClock;
 use slot_clock::TestingSlotClock;
 use state_processing::per_slot_processing;
@@ -80,7 +81,7 @@ where
     E: EthSpec,
 {
     /// Instantiate a new harness with `validator_count` initial validators.
-    pub fn new(validator_count: usize) -> Self {
+    pub fn new(validator_count: usize, log: Logger) -> Self {
         let spec = E::default_spec();
 
         let store = Arc::new(MemoryStore::open());
@@ -105,6 +106,7 @@ where
             genesis_state,
             genesis_block,
             spec.clone(),
+            log,
         )
         .expect("Terminate if beacon chain generation fails");
 

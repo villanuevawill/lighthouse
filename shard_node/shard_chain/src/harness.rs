@@ -8,6 +8,7 @@ use shard_lmd_ghost::LmdGhost as ShardLmdGhost;
 use shard_state_processing::per_shard_slot_processing;
 use shard_store::MemoryStore as ShardMemoryStore;
 use shard_store::Store as ShardStore;
+use slog::Logger;
 use slot_clock::{ShardSlotClock, SlotClock};
 use slot_clock::{ShardTestingSlotClock, TestingSlotClock};
 use state_processing::per_slot_processing;
@@ -89,7 +90,7 @@ where
     U: ShardSpec,
 {
     /// Instantiate a new harness with `validator_count` initial validators.
-    pub fn new(validator_count: usize) -> Self {
+    pub fn new(validator_count: usize, log: Logger) -> Self {
         let beacon_spec = E::default_spec();
         let shard_spec = U::default_spec();
 
@@ -128,6 +129,7 @@ where
             beacon_genesis_state,
             beacon_genesis_block,
             beacon_spec.clone(),
+            log.clone(),
         )
         .expect("Terminate if beacon chain generation fails");
         let beacon_chain_reference = Arc::new(beacon_chain);
@@ -139,6 +141,7 @@ where
             shard_spec.clone(),
             0,
             beacon_chain_reference.clone(),
+            log,
         )
         .expect("Terminate if beacon chain generation fails");
         let shard_chain_reference = Arc::new(shard_chain);

@@ -12,6 +12,7 @@ use shard_store::iter::{
     BestBlockRootsIterator, BlockIterator, BlockRootsIterator, StateRootsIterator,
 };
 use shard_store::{Error as DBError, Store};
+use slog::{info, Logger};
 use slot_clock::ShardSlotClock;
 use std::sync::Arc;
 use types::*;
@@ -59,6 +60,7 @@ pub struct ShardChain<T: ShardChainTypes, L: BeaconChainTypes> {
     genesis_block_root: Hash256,
     pub crosslink_root: RwLock<Hash256>,
     pub fork_choice: ForkChoice<T>,
+    pub log: Logger,
 }
 
 impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
@@ -69,6 +71,7 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         spec: ChainSpec,
         shard: Shard,
         parent_beacon: Arc<BeaconChain<L>>,
+        log: Logger,
     ) -> Result<Self, Error> {
         genesis_state.build_cache(&spec)?;
         let genesis_block_header = &genesis_state.latest_block_header;
@@ -82,6 +85,13 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
 
         let genesis_block_root = genesis_block_header.canonical_root();
         store.put(&genesis_block_root, &genesis_block)?;
+
+        info!(log, "Shard chain initialized from genesis";
+              "shard" => shard,
+              "gensis_slot" => genesis_state.slot,
+              "state_root" => format!("{}", state_root),
+              "block_root" => format!("{}", genesis_block_root),
+        );
 
         // Also store the genesis block under the `ZERO_HASH` key.
         store.put(&spec.zero_hash, &genesis_block)?;
@@ -105,6 +115,7 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
             crosslink_root: RwLock::new(Hash256::default()),
             fork_choice: ForkChoice::new(store.clone(), &genesis_block, genesis_block_root),
             store,
+            log,
         })
     }
 
@@ -565,6 +576,13 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
                 .get(&shard_state_root)?
                 .ok_or_else(|| Error::MissingShardState(shard_state_root))?;
 
+            info!(self.log, "Shard Fork choice produces new head";
+                "shard" => self.shard,
+                "block_root" => format!("{}", &shard_block_root),
+                "state_root" => format!("{}", &shard_state_root),
+                "slot" => format!("{}", &shard_block.slot),
+            );
+
             self.update_canonical_head(CheckPoint {
                 shard_block: shard_block,
                 shard_block_root,
@@ -618,6 +636,12 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
 
         self.fork_choice
             .process_finalization(&crosslink_block, crosslink_root)?;
+
+        info!(self.log, "New crosslink detected from beacon chain";
+              "shard" => self.shard,
+              "root" => format!("{}", crosslink_root),
+              "pruning fork choice from slot" => format!("{}", crosslink_block.slot),
+        );
 
         Ok(())
     }

@@ -4,10 +4,10 @@ use crate::fork_choice::{Error as ForkChoiceError, ForkChoice};
 use crate::metrics::Metrics;
 use crate::persisted_beacon_chain::{PersistedBeaconChain, BEACON_CHAIN_DB_KEY};
 use lmd_ghost::LmdGhost;
-use log::trace;
 use operation_pool::DepositInsertStatus;
 use operation_pool::{OperationPool, PersistedOperationPool};
 use parking_lot::{RwLock, RwLockReadGuard};
+use slog::{info, Logger};
 use slot_clock::SlotClock;
 use state_processing::per_block_processing::errors::{
     AttestationValidationError, AttesterSlashingValidationError, DepositValidationError,
@@ -83,6 +83,8 @@ pub struct BeaconChain<T: BeaconChainTypes> {
     pub fork_choice: ForkChoice<T>,
     /// Stores metrics about this `BeaconChain`.
     pub metrics: Metrics,
+
+    pub log: Logger,
 }
 
 impl<T: BeaconChainTypes> BeaconChain<T> {
@@ -93,6 +95,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         mut genesis_state: BeaconState<T::EthSpec>,
         genesis_block: BeaconBlock,
         spec: ChainSpec,
+        log: Logger,
     ) -> Result<Self, Error> {
         genesis_state.build_all_caches(&spec)?;
 
@@ -105,6 +108,12 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         // Also store the genesis block under the `ZERO_HASH` key.
         let genesis_block_root = genesis_block.block_header().canonical_root();
         store.put(&spec.zero_hash, &genesis_block)?;
+
+        info!(log, "Beacon chain initialized from genesis";
+              "gensis_slot" => genesis_state.slot,
+              "state_root" => format!("{}", state_root),
+              "block_root" => format!("{}", genesis_block_root),
+        );
 
         let canonical_head = RwLock::new(CheckPoint::new(
             genesis_block.clone(),
@@ -123,6 +132,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             fork_choice: ForkChoice::new(store.clone(), &genesis_block, genesis_block_root),
             metrics: Metrics::new()?,
             store,
+            log,
         })
     }
 
@@ -130,6 +140,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
     pub fn from_store(
         store: Arc<T::Store>,
         spec: ChainSpec,
+        log: Logger,
     ) -> Result<Option<BeaconChain<T>>, Error> {
         let key = Hash256::from_slice(&BEACON_CHAIN_DB_KEY.as_bytes());
         let p: PersistedBeaconChain<T> = match store.get(&key) {
@@ -159,6 +170,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
             genesis_block_root: p.genesis_block_root,
             metrics: Metrics::new()?,
             store,
+            log,
         }))
     }
 
@@ -395,10 +407,6 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
         &self,
         validator_index: usize,
     ) -> Result<Option<(Slot, u64)>, BeaconStateError> {
-        trace!(
-            "BeaconChain::validator_attestion_slot_and_shard: validator_index: {}",
-            validator_index
-        );
         if let Some(attestation_duty) = self
             .state
             .read()
@@ -803,6 +811,12 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     new_epoch: new_finalized_epoch,
                 })
             } else {
+                info!(self.log, "Beracon Fork choice produces new head";
+                    "block_root" => format!("{}", &beacon_block_root),
+                    "state_root" => format!("{}", &beacon_state_root),
+                    "slot" => format!("{}", &beacon_block.slot),
+                );
+
                 self.update_canonical_head(CheckPoint {
                     beacon_block: beacon_block,
                     beacon_block_root,
@@ -873,6 +887,11 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                 new_epoch: new_finalized_epoch,
             })
         } else {
+            info!(self.log, "Beacon Finalization Detected";
+                "root" => format!("{}", finalized_block_root),
+                "pruning fork choice from slot" => format!("{}", finalized_block.slot),
+            );
+
             self.fork_choice
                 .process_finalization(&finalized_block, finalized_block_root)?;
 
