@@ -14,7 +14,7 @@ pub fn get_state<T: ShardChainTypes + 'static, L: BeaconChainTypes + 'static>(
     req: Request<Body>,
 ) -> ApiResult {
     let log = get_logger_from_request(&req);
-    info!(log, "Latest state requested");
+    info!(log, "REST_API: Latest state requested");
 
     let shard_chain = get_shard_chain_from_request::<T, L>(&req)?;
     let current_state = shard_chain.current_state();
@@ -26,7 +26,7 @@ pub fn get_block<T: ShardChainTypes + 'static, L: BeaconChainTypes + 'static>(
     req: Request<Body>,
 ) -> ApiResult {
     let log = get_logger_from_request(&req);
-    info!(log, "Latest block requested");
+    info!(log, "REST_API: Latest block requested");
 
     let shard_chain = get_shard_chain_from_request::<T, L>(&req)?;
     let current_block = &shard_chain.head().shard_block;
@@ -45,7 +45,7 @@ pub fn process_block_body<T: ShardChainTypes + 'static, L: BeaconChainTypes + 's
     let log = get_logger_from_request(&req);
     info!(
         log,
-        "A block body has been submitted, adding it to current pool."
+        "REST_API: A block body has been submitted, adding it to current pool."
     );
 
     let _ = try_future!(check_content_type_for_json(&req));

@@ -42,7 +42,7 @@ pub fn run_shard_chain(log: &slog::Logger, executor: &TaskExecutor) -> () {
         "fork_epoch" => format!("{:?}", fork_epoch),
     );
 
-    harness.extend_beacon_chain((num_blocks_produced + 1) as usize);
+    harness.extend_beacon_chain((num_blocks_produced) as usize);
 
     info!(
         log,
@@ -62,9 +62,11 @@ pub fn run_shard_chain(log: &slog::Logger, executor: &TaskExecutor) -> () {
                 advance_shard_slot(&harness_logger, &harness);
                 if round % 2 == 0 {
                     advance_beacon_slot(&harness_logger, &harness);
-                    extend_beacon_chain(&harness_logger, &harness);
                 }
                 extend_shard_chain(&harness_logger, &harness);
+                if round % 2 == 0 {
+                    extend_beacon_chain(&harness_logger, &harness);
+                }
                 round = round + 1;
                 Ok(())
             })

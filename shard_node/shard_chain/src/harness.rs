@@ -244,7 +244,7 @@ where
             if let ShardBlockProcessingOutcome::Processed { block_root } = outcome {
                 head_block_root = Some(block_root);
 
-                self.add_shard_attestations_to_op_pool(&new_state, block_root, current_slot);
+                self.add_shard_attestations_to_op_pool(&new_state, block_root, current_slot - 1);
             } else {
                 panic!("block should be successfully processed: {:?}", outcome);
             }
@@ -412,6 +412,9 @@ where
                     _ => Hash256::zero(),
                 };
 
+                let check_root = self
+                    .shard_chain
+                    .get_block_root_at_epoch(state.current_epoch());
                 for (i, validator_index) in cc.committee.iter().enumerate() {
                     if attesting_validators.contains(validator_index) {
                         let data = self
@@ -481,7 +484,7 @@ where
         let shard_committee = self
             .shard_chain
             .shard_committee(
-                head_block_slot.epoch(spec.slots_per_epoch, spec.shard_slots_per_beacon_slot),
+                (head_block_slot + 1).epoch(spec.slots_per_epoch, spec.shard_slots_per_beacon_slot),
             )
             .expect("should get committees");
         let committee_size = shard_committee.committee.len();
