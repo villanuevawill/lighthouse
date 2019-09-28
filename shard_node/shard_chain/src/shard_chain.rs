@@ -190,9 +190,10 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
     pub fn get_block_root_at_epoch(&self, epoch: Epoch) -> Result<Option<Hash256>, Error> {
         let spec = &self.spec;
         let start_slot_at_epoch = epoch
-            .start_slot(self.spec.slots_per_epoch)
+            .start_slot(spec.slots_per_epoch)
             .shard_slot(spec.slots_per_epoch, spec.shard_slots_per_epoch);
         let current_slot = self.state.read().slot;
+
         let root = self
             .rev_iter_block_roots(current_slot)
             .find(|(_hash, slot)| slot.as_u64() == start_slot_at_epoch.as_u64());
@@ -320,6 +321,7 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         let crosslink_root = beacon_state
             .get_current_crosslink(self.shard)?
             .crosslink_data_root;
+
         let current_crossslink_root = *self.crosslink_root.read();
         if crosslink_root != current_crossslink_root {
             *self.crosslink_root.write() = crosslink_root;
@@ -345,6 +347,7 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
             .parent_beacon
             .current_state()
             .get_shard_committee(epoch, self.shard)?;
+
         Ok(shard_committee)
     }
 
@@ -530,9 +533,13 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
             .latest_block_header
             .slot
             .epoch(spec.slots_per_epoch, spec.shard_slots_per_beacon_slot);
-        let beacon_block_root = beacon_state
-            .get_block_root_at_epoch(beacon_block_root_epoch)?
-            .clone();
+
+        let beacon_block_root = match beacon_state.get_block_root_at_epoch(beacon_block_root_epoch)
+        {
+            Ok(block_root) => block_root,
+            Err(e) => beacon_state.get_block_root_at_epoch(beacon_block_root_epoch - 1)?,
+        }
+        .clone();
 
         let mut block = ShardBlock {
             shard: state.shard,

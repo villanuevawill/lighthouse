@@ -80,12 +80,6 @@ fn validate_attestation_parametric<T: EthSpec>(
         verify_casper_ffg_vote(attestation, state)?;
     }
 
-    // Crosslink data root is zero (to be removed in phase 1).
-    verify!(
-        attestation.data.crosslink_data_root == spec.zero_hash,
-        Invalid::ShardBlockRootNotZero
-    );
-
     // Check signature and bitfields
     let indexed_attestation = convert_to_indexed(state, attestation)?;
     if verify_signature {

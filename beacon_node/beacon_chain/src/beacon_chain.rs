@@ -811,7 +811,7 @@ impl<T: BeaconChainTypes> BeaconChain<T> {
                     new_epoch: new_finalized_epoch,
                 })
             } else {
-                info!(self.log, "Beracon Fork choice produces new head";
+                info!(self.log, "Beacon Fork choice produces new head";
                     "block_root" => format!("{}", &beacon_block_root),
                     "state_root" => format!("{}", &beacon_state_root),
                     "slot" => format!("{}", &beacon_block.slot),
