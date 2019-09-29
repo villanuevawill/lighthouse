@@ -15,6 +15,7 @@ use shard_store::{Error as DBError, Store};
 use slog::{info, Logger};
 use slot_clock::ShardSlotClock;
 use std::sync::Arc;
+use store::{Error as BeaconDBError, Store as BeaconStore};
 use types::*;
 
 #[derive(Debug, PartialEq)]
@@ -189,14 +190,22 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
 
     pub fn get_block_root_at_epoch(&self, epoch: Epoch) -> Result<Option<Hash256>, Error> {
         let spec = &self.spec;
+
         let start_slot_at_epoch = epoch
             .start_slot(spec.slots_per_epoch)
             .shard_slot(spec.slots_per_epoch, spec.shard_slots_per_epoch);
+
+        if start_slot_at_epoch <= spec.phase_1_fork_slot {
+            return Ok(Some(Hash256::zero()));
+        }
+
         let current_slot = self.state.read().slot;
 
         let root = self
-            .rev_iter_block_roots(current_slot)
-            .find(|(_hash, slot)| slot.as_u64() == start_slot_at_epoch.as_u64());
+            .rev_iter_block_roots(current_slot - 1)
+            .find(|(hash, slot)| {
+                slot.as_u64() <= start_slot_at_epoch.as_u64() && hash != &Hash256::zero()
+            });
 
         Ok(match root {
             Some(root) => Some(root.0),
@@ -482,8 +491,22 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
         self.store.put(&block_root, &block)?;
         self.store.put(&state_root, &state)?;
 
-        self.fork_choice
-            .process_block(&beacon_state, &block, block_root)?;
+        // temp - need to update all logic to grab beacon state at epoch boundary
+        let attestation_epoch =
+            (block.slot - 1).epoch(spec.slots_per_epoch, spec.shard_slots_per_beacon_slot);
+        if attestation_epoch == beacon_state.current_epoch() {
+            self.fork_choice
+                .process_block(&beacon_state, &block, block_root)?;
+        } else {
+            let parent_beacon_state: BeaconState<L::EthSpec> = self
+                .parent_beacon
+                .store
+                .get(beacon_state.get_state_root(beacon_state.slot - 1)?)?
+                .ok_or_else(|| Error::DBInconsistent(format!("Missing state")))?;
+
+            self.fork_choice
+                .process_block(&parent_beacon_state, &block, block_root)?;
+        }
 
         // Execute the fork choice algorithm, enthroning a new head if discovered.
         //
@@ -657,6 +680,12 @@ impl<T: ShardChainTypes, L: BeaconChainTypes> ShardChain<T, L> {
 impl From<DBError> for Error {
     fn from(e: DBError) -> Error {
         Error::DBError(e)
+    }
+}
+
+impl From<BeaconDBError> for Error {
+    fn from(e: BeaconDBError) -> Error {
+        Error::BeaconDBError(e)
     }
 }
 

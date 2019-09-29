@@ -125,8 +125,10 @@ impl<'a, T: ShardSpec, U: Store> Iterator for BlockRootsIterator<'a, T, U> {
         }
 
         let mut latest_block_header = self.shard_state.latest_block_header.clone();
-        // zero out the state root to find where it was stored
-        latest_block_header.state_root = Hash256::zero();
+        if latest_block_header.state_root == Hash256::zero() {
+            latest_block_header.state_root = self.shard_state.canonical_root();
+        }
+
         Some((latest_block_header.canonical_root(), self.slot))
     }
 }
