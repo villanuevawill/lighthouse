@@ -157,6 +157,11 @@ pub fn process_shard_block_body<T: ShardSpec>(
 
     state.exec_env_states[0] = Hash256::from_slice(&runtime.execute());
 
+    println!(
+        "*** NEW EE ROOT: {} ***",
+        hex::encode(state.exec_env_states[0])
+    );
+
     Ok(())
 }
 
